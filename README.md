@@ -52,7 +52,7 @@ While this attempts to be as accurate as possible there are some issues that pre
 - Will PVE be supported?
   - At this point, I don't have the bandwidth, that being said, if you want to work on it, fork it and let's gooooooo.
 - Why are the releases so large?
-  - In order to keep using these easy for all users, the compiled binaries are self contained so you don't need to download or install a huge number of dependencies from Microsoft
+  - In order to keep using these easy for all users, the compiled binaries are self contained so you don't need to download or install a huge number of dependencies from Microsoft Note: this does not mean any proprietary data owned by IP holders is included. This is just the .Net dependencies
 - Where are decks and other information saved?
   - Upon first boot a data folder will be created in the root folder of Auth and Terminal. Those folders will contain sqlite files that hold that information
 - I tried to run my client and it gave me a werid error with no login prompt.
