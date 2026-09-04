@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Dingler.Auth/Dingler.Auth.csproj" Id="077f33d4-425c-4c40-8d23-9e5dee0df03c" />
+  <Project Path="Dingler.Data/Dingler.Data.csproj" Id="56a13aab-ed34-4ec1-8031-fd74a1d990bf" />
+  <Project Path="Dingler.Game.Protocol/Dingler.Game.Protocol.csproj" />
+  <Project Path="Dingler.Game/Dingler.Game.csproj" Id="884f760c-a81f-4175-97ad-faff5d4f7a76" />
+  <Project Path="Dingler.Server/Dingler.Server.csproj" />
+  <Project Path="Dingler.Terminal/Dingler.Terminal.csproj" Id="c2496043-3c66-4a16-b45e-386098ec9c7e" />
+</Solution>

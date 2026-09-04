@@ -1,0 +1,6 @@
+@Dingler.Auth_HostAddress = http://localhost:5072
+
+GET {{Dingler.Auth_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

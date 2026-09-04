@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Reference Include="Assembly-CSharp-firstpass">
+        <HintPath>..\DLLs\Assembly-CSharp-firstpass.dll</HintPath>
+        <Private Condition="'$(Configuration)' == 'Debug'">true</Private>
+        <Private Condition="'$(Configuration)' == 'Release'">false</Private>
+        <Aliases>HexGame</Aliases>
+      </Reference>
+      <Reference Include="ICSharpCode.SharpZipLib">
+        <HintPath>..\DLLs\ICSharpCode.SharpZipLib.dll</HintPath>
+        <Private Condition="'$(Configuration)' == 'Debug'">true</Private>
+        <Private Condition="'$(Configuration)' == 'Release'">false</Private>
+      </Reference>
+      <Reference Include="Microsoft.Extensions.Logging.Abstractions">
+        <HintPath>..\..\..\.nuget\packages\microsoft.extensions.logging.abstractions\10.0.9\lib\net10.0\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Dingler.Server\Dingler.Server.csproj" />
+    </ItemGroup>
+
+</Project>

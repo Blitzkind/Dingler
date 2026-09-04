@@ -1,0 +1,427 @@
+extern alias HexGame;
+using Dingler.Server;
+using Dingler.Server.Systems;
+using Dingler.Game.Games;
+using Dingler.Game.Match;
+using Dingler.Game.Protocol.Chat;
+using Dingler.Game.States;
+using Dingler.Game.Tournaments.Registration;
+using Dingler.Game.Tournaments.StartCondition;
+using HexGame::Game.Shared;
+using HexGame::Game.Shared.Domain;
+using HexGame::Game.Shared.Tournaments;
+using HexGame::Game.Shared.TournamentSystemMkII;
+using Microsoft.Extensions.Logging;
+
+namespace Dingler.Game.Tournaments;
+
+extern alias HexGame;
+
+public sealed class Tournament : IRegisterable, IJoinable, IDisposable
+{
+	public ulong Id { get; }
+	public bool IsRunning { get; init; }
+
+	public event Action<Tournament, TournamentRoomState, string>? PlayerRegistered;
+	public event Action<Tournament, TournamentRoomState, string>? PlayerDeregistered;
+	public event Action<Tournament, TournamentRoomState, string, bool>? PlayerRequestsFullUpdate;
+	public event Action<Tournament, TournamentRoomState, string, bool>? PlayerJoined;
+	public event Action<Tournament, TournamentRoomState, string, bool>? PlayerLeft;
+	public event Action<Tournament, TournamentRoomState, int>? RoundStart;
+	public event Action<Tournament, TournamentRoomState, int>? RoundEnd;
+	public event Action<Tournament, TournamentRoomState, ulong>? GameStart;
+	public event Action<Tournament, TournamentRoomState, int>? GameEnd;
+	public event Action<Tournament, TournamentRoomState, List<TournamentPairing>>? Pairings;
+	public event Action<Tournament, TournamentRoomState>? TournamentStart;
+	public event Action<Tournament, TournamentRoomState>? TournamentComplete;
+	public event Action<Tournament, TournamentRoomState, string>? SendPlayerToSideboard;
+	public event Action<Tournament, TournamentRoomState, string>? SendPlayerToMainLobby;
+	public event Action<Tournament, TournamentRoomState, string>? SendPlayerToTournamentLobby;
+	public event Action<Tournament>? Cleanup;
+	public bool IsFull { get; private set; }
+	public bool IsFinished { get; private set; }
+	// It's confusing. I need to redo this. This is checking if it's a waiting room's internal tournament
+	// I might have been high
+	public bool IsWaitingRoom { get; private set; }
+	
+	private readonly Actor<TournamentRoomState> _actor;
+	private readonly SemaphoreSlim _semaphoreSlim;
+	private readonly IStartCondition _startCondition;
+	private readonly CancellationToken _tournamentToken;
+	private readonly ILogger<Tournament>? _logger;
+	private readonly MatchManager _matchManager;
+
+	private ulong _numberOfGamesPlayed = 0;
+	private List<TournamentGameInfo> _gamesForTheRound = new List<TournamentGameInfo>();
+
+// Don't call this normally. Use TournamentManager.CreateTournament
+	public Tournament(ulong id, IStartCondition startCondition, SessionManager sessionManager, GameManager gameManager,
+		TournamentSettings tournamentSettings, GameSettings gameSettings, CancellationToken tournamentToken,
+		bool isWaitingRoom = false, ILogger<Tournament>? logger = null)
+	{
+		Id = id;
+		var tournamentInfo = new TournamentInfo()
+		{
+			TournamentID = id,
+			MaxEntrants = tournamentSettings.MaxPlayers,
+			MinEntrants = tournamentSettings.MinPlayers,
+			Format = tournamentSettings.TournamentFormat,
+			Games = new List<TournamentGameInfo>(),
+			linkedTournament = null,
+			Players = new List<TournamentPlayerInfo>(),
+			ResgistrationOpenTime = DateTime.MinValue.Ticks,
+			State = TournamentState.WaitForStart,
+			TournamentEndTime = DateTime.MaxValue.Ticks,
+			TournamentStartTime = DateTime.MinValue.Ticks,
+			TournamentStatus = ETournamentStatus.WaitingForPlayers,
+			tournamentDescription = new TournamentDesc(Id, tournamentSettings.MinPlayers, tournamentSettings.MaxPlayers,
+				tournamentSettings.Description, new List<string>().ToArray(), 0, 0, 0)
+			{
+				RoomType = "",
+				TournamentState = TournamentState.WaitForStart,
+				tournamentRewards = new TournamentRewardCollection(),
+				tournamentFees = new Dictionary<int, TournamentEntryInfo>()
+			}
+		};
+		_actor = new Actor<TournamentRoomState>(new TournamentRoomState(tournamentInfo, gameSettings));
+		_semaphoreSlim = new SemaphoreSlim(1, 1);
+		_startCondition = startCondition;
+		IsWaitingRoom = isWaitingRoom;
+		_tournamentToken = tournamentToken;
+		_matchManager = new MatchManager(gameManager, gameSettings, _actor.State.TournamentInfo, sessionManager);
+		_gamesForTheRound = new List<TournamentGameInfo>();
+		_logger = logger;
+	}
+	
+	public Task<RegistrationResult> RegisterAsync(string username, deck_bits deck, UID playerUid)
+	{
+		return _actor.ScheduleWork(state =>
+		{
+			if (state.TournamentInfo.State != TournamentState.WaitForStart)
+				return RegistrationResult.Fail("Tournament is not accepting entrants.");
+			
+			if (state.TournamentInfo.Players.Count >= state.TournamentInfo.MaxEntrants)
+				return RegistrationResult.Fail("Tournament is full");
+
+			if (state.TournamentInfo.Players.Any(p => p.Name.Equals(username)))
+				return RegistrationResult.Fail("Player is already registered");
+			
+			state.TournamentInfo.Players.Add(new TournamentPlayerInfo()
+			{
+				Name = username,
+				DeckHash = deck.Id.ToString(),
+				Status = ETournamentPlayerStatus.WaitingForTournamentStart,
+				State = PlayerStates.WaitingForTournamentStart,
+				EliminationReason = ETournamentPlayerEliminationReason.TPE_NotEliminated,
+				ElimintationRound = 0,
+				PlayerID = (ulong)state.TournamentInfo.Players.Count,
+				GWR = 0,
+				Losses = 0,
+				Wins = 0,
+				OMWR = 0,
+				OOMWR = 0,
+				Points = 0,
+				PlayerUID = playerUid
+			});
+			state.BaseDeckInfo[username] = deck;
+			state.DeckInfo[username] = deck;
+			var result = RegistrationResult.Success();
+
+			result.TournamentId = Id;
+			IsFull = state.TournamentInfo.Players.Count == state.TournamentInfo.MinEntrants;
+			PlayerRegistered?.Invoke(this, state, username);
+			return result;
+		});
+	}
+
+	public Task<bool> IsInTournamentAsync(string username)
+	{
+		return _actor.ScheduleWork(state =>
+		{
+			return state.TournamentInfo.Players.Any(p => p.Name.Equals(username));
+		});
+	}
+	
+	public Task<RegistrationResult> DropAsync(string username)
+	{
+		return _actor.ScheduleWork(state =>
+		{
+			var players = state.TournamentInfo.Players;
+			if (!players.Any(p => p.Name.Equals(username)))
+				return RegistrationResult.Fail("Player is not registered to tournament");
+
+			for (int i = 0; i < players.Count; i++)
+			{
+				if (players[i].Name.Equals(username))
+				{
+					players.RemoveAt(i);
+					var result = RegistrationResult.Success();
+					result.TournamentId = Id;
+					return result;
+				}
+			}
+
+			return RegistrationResult.Fail("Could not  find player");
+		});
+	}
+
+	// Not actually starting. Just sets it to wait to start.
+	public async Task LaunchAsync(CancellationToken token)
+	{
+		_ = _actor.RunAsync(token);
+		await _startCondition.WaitForStartAsync(this, token);
+
+		_ = _actor.ScheduleWork(state =>
+		{
+			if (state.TournamentInfo.State != TournamentState.WaitForStart)
+				return;
+			
+			if (state.TournamentInfo.Players.Count < state.TournamentInfo.MinEntrants)
+				return; // We cancellin' cuz this game SUCKS
+
+			state.TournamentInfo.State = TournamentState.PlayGames.WaitForRoundToFinish;
+			state.TournamentInfo.TournamentStatus = ETournamentStatus.InProgress;
+
+			state.TournamentInfo.NumberOfRounds =
+				CalculateNumberOfRounds(state.TournamentInfo.Style, state.TournamentInfo.Players.Count);
+
+			state.CurrentRound = 0;
+			state.VersionNumber++;
+			TournamentStart?.Invoke(this, state);
+
+			_ = MonitorTournamentRounds(state.TournamentInfo.NumberOfRounds);
+		});
+	}
+	
+	private int CalculateNumberOfRounds(ETournamentStyle style, int playerCount)
+	{
+		if (style.HasFlag(ETournamentStyle.Swiss))
+		{
+			var swissRounds = (int)Math.Ceiling(Math.Log(Math.Max(2, playerCount), 2.0)) + 1;
+			return Math.Min(swissRounds, 12);
+		}
+
+		if (playerCount <= 1)
+			return 1;
+
+		return (int)Math.Ceiling(Math.Log(playerCount, 2.0));
+	}
+
+	private async Task MonitorTournamentRounds(int numberOfRounds)
+	{
+		for (int i = 0; i < numberOfRounds; i++)
+		{
+			var games = await BeginRoundAsync(numberOfRounds);
+
+			await Task.WhenAll(games);
+		}
+
+		await _actor.ScheduleWork(state => TournamentComplete?.Invoke(this, state));
+		_actor.Finish();
+		Cleanup?.Invoke(this);
+		
+	}
+
+	private List<TournamentPairing> GeneratePairings(TournamentRoomState state)
+	{
+		var round = state.CurrentRound + 1;
+		state.TournamentInfo.State = TournamentState.PlayGames.StartNextRound.Pairing;
+		var activePlayers = state.TournamentInfo.Players
+			.Where(p => p.EliminationReason == ETournamentPlayerEliminationReason.TPE_NotEliminated).ToList();
+		var pairings = PairingGenerator.GeneratePairings(activePlayers, state.DeckInfo, round, state.TournamentInfo.Style);
+			
+		Pairings?.Invoke(this, state, pairings);
+			
+		return pairings;
+	}
+
+	private Task UpdatePlayerInfoAsync(Action<List<TournamentPlayerInfo>> updateAction)
+	{
+		return _actor.ScheduleWork(state => updateAction(state.TournamentInfo.Players));
+	}
+
+	private Task<List<Task>> BeginRoundAsync(int roundNumber)
+	{
+		return _actor.ScheduleWork(state =>
+		{
+			List<TournamentPairing> pairings = GeneratePairings(state);
+
+			var gameTasks = new List<Task>();
+			
+			foreach (var pairing in pairings)
+			{
+				if (pairing.Bye)
+				{
+					pairing.Player1.Wins++;
+					var playerInfo = state.TournamentInfo.Players.FirstOrDefault(p =>
+						p.Name == pairing.Player1.Name || p.Name == pairing.Player2.Name);
+						
+					if (playerInfo is null)
+						continue;
+
+					playerInfo.Wins = pairing.Player1.Wins;
+				}
+				
+				var gameInfo = new TournamentGameInfo
+				{
+					ID = _numberOfGamesPlayed,
+					MatchID = (uint)_numberOfGamesPlayed,
+					RoundID = (uint)roundNumber,
+					Player1ID = pairing.Player1.PlayerID,
+					Player2ID = pairing.Player2.PlayerID,
+					State = MatchState.PlayGame.WaitingForSession,
+					Status = ETournamentGameStatus.Starting,
+					StartTime = DateTime.UtcNow.Ticks,
+					EndTime = 0,
+					Game1Winner = 0,
+					Game2Winner = 0,
+					Game3Winner = 0
+				};
+
+				state.TournamentInfo.Games.Add(gameInfo);
+				
+				gameTasks.Add(StartMatch(pairing, gameInfo));
+			}
+			
+			state.CurrentRound = roundNumber + 1;
+			
+			RoundStart?.Invoke(this, state, state.CurrentRound);
+			
+			return gameTasks;
+		});
+	}
+	
+	private async Task StartMatch(TournamentPairing pairing, TournamentGameInfo gameInfo)
+	{
+		var match = _matchManager.CreateMatch(pairing);
+		
+		var result = await match.StartMatchAsync(_tournamentToken);
+
+		for (int i = 0; i < result.Count; i++)
+		{
+			switch (i)
+			{
+				case 0:
+					gameInfo.Game1Winner = result[i].GetInstanceId();
+					break;
+				case 1:
+					gameInfo.Game2Winner = result[i].GetInstanceId();
+					break;
+				default:
+					gameInfo.Game3Winner = result[i].GetInstanceId();
+					break;
+			}
+		}
+	}
+
+	private Task<(UID, UID)> MonitorMatchAsync(HexGameWrapper game)
+	{
+		try
+		{
+			return game.RunGameAsync();
+		}
+		catch (Exception ex)
+		{
+			_logger?.LogError("Error in game: {ex}", ex);
+			throw;
+		}
+	}
+	
+	private ulong GetPlayerIndex(TournamentRoomState state, string username)
+	{
+		return (ulong)state.TournamentInfo.Players.FindIndex(p => p.Name == username);
+	}
+	
+	public Task<bool> TryJoinTournament(SessionContext context, bool isWaitingRoom = false)
+	{
+		return _actor.ScheduleWork(state =>
+		{
+			var username = context.UserName!;
+
+			if (!state.TournamentInfo.Players.Any(p => p.Name.Equals(username)))
+				return false;
+
+			if (!state.DeckInfo.TryGetValue(username, out _))
+				return false;
+
+			state.WaitingRoomVersion++;
+			PlayerJoined?.Invoke(this, state, username, isWaitingRoom);
+
+			return true;
+		});
+	}
+	
+	public Task SendFullUpdateAsync(SessionContext context, bool isWaitingRoomRequest, CancellationToken token)
+	{
+		// Hex has different deltas depending on the room... Ughhhhhhhhhhhhhhhhhhhhhhh. We could have combined
+		// them into one but noooooooooooo. I have to constantly know if the room I'm in is a "WaitingRoom" 
+		return _actor.ScheduleWork(state => PlayerRequestsFullUpdate?.Invoke(this, state, context.UserName!, isWaitingRoomRequest));
+	}
+
+	public Task<TournamentInfo> GetInfoAsync()
+	{
+		return _actor.ScheduleWork(state => state.TournamentInfo);
+	}
+
+	public Task ReconnectAsync(SessionContext context)
+	{
+		return Task.CompletedTask;
+	}
+
+	public void Dispose()
+	{
+		_semaphoreSlim.Dispose();
+	}
+
+	// Dropping doesn't work right. I'll fix it later, I just want this done
+	public Task DropFromWaitingRoomAsync(string contextUserName, CancellationToken token)
+	{
+		return _actor.ScheduleWork(async (state, _) =>
+		{
+			if (IsWaitingRoom || state.TournamentInfo.State != TournamentState.WaitForStart)
+				return;
+
+			await DropAsync(contextUserName);
+		});
+	}
+
+	// isFullJoin is when hex has you join {roomName}_full. It's meant to say "send me the full room state". Players
+	// need that before they can accept deltas.
+	public async Task<bool> TryJoinAsync(SessionContext context, TournamentJoinChatRequest request, CancellationToken token = default)
+	{
+		if (request.IsFullStateRequest)
+		{
+			await SendFullUpdateAsync(context, request.IsWaitingRoomRequest, token);
+			return true;
+		}
+		
+		return await TryJoinTournament(context, request.IsWaitingRoomRequest);
+		
+	}
+
+	public void UpdateDeck(string username, deck_bits deck)
+	{
+		if (!_matchManager.TryGetMatchForPlayer(username, out var match))
+			return;
+		
+		match.DeckSubmitted(username, deck);
+	}
+
+	public void HandlePlayerWantsToLeave(string username)
+	{
+		if (!_matchManager.TryGetMatchForPlayer(username, out var match))
+			return;
+		
+		match.HandleTransfer(username);
+	}
+
+	public bool TryForfeitMatch(string username)
+	{
+		if (!_matchManager.TryGetMatchForPlayer(username, out var match))
+			return false;
+		
+		match.PlayerForfeitsMatch(username);
+		return true;
+	}
+	
+}

@@ -1,0 +1,132 @@
+﻿extern alias HexGame;
+using System.Net;
+using System.Net.Sockets;
+using Dingler.Server;
+using Dingler.Server.Abstractions;
+using Dingler.Server.Startup;
+using Dingler.Data.Configuration;
+using Dingler.Data.Context;
+using Dingler.Data.Repositories;
+using Dingler.Game.Configuration;
+using Dingler.Game.GameObjects;
+using Dingler.Game.GameObjects.TrackedGameZones;
+using Dingler.Game.Games;
+using Dingler.Game.Protocol;
+using Dingler.Game.Protocol.Middleware;
+using Dingler.Game.Services;
+using Dingler.Game.Tournaments;
+using HexGame::Game.Shared;
+using HexGame::Game.Shared.Mechanics;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+
+
+namespace Dingler.Game.CompositionRoot
+{
+    public static class CompositionRoot
+    {
+        public static IHost BuildHex(this IHostBuilder hostBuilder)
+        {
+            hostBuilder.ConfigureServices((hb, sc) =>
+            {
+                var gameDataLocation = hb.Configuration["GamedataLocation"] ??
+                                       throw new InvalidOperationException("GamedataLocation is not configured");
+
+                if (!Directory.Exists(gameDataLocation))
+                {
+                    throw new InvalidOperationException(
+                        $"Game data Location does not exist or is not a directory: '{gameDataLocation}' ");
+                }
+
+                sc.AddOptions<AuthOptions>()
+                    .Bind(hb.Configuration.GetSection(AuthOptions.SectionName))
+                    .Validate(o => Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _),
+                        "Auth:BaseUrl must be an absolute URL, e.g. https://localhost:5000");
+                
+                
+                sc.AddSingletonStartupService(_ => new CollectionCacheService(gameDataLocation))
+                    .AddHttpClient("AuthClient", (sp, client) =>
+                    {
+                        var auth = sp.GetRequiredService<IOptions<AuthOptions>>().Value;
+                        client.BaseAddress = new Uri(auth.BaseUrl);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() =>
+                    {
+                        var handler = new HttpClientHandler();
+                        return handler;
+                    });
+                var connectionString =
+                    SqliteConnection.ResolveDataSource(hb.Configuration.GetConnectionString("GameData"));
+                SqliteConnection.EnsureDirectoryExists(connectionString);
+                
+                sc
+                    .AddScopedAsyncStartupService<TournamentManager>()
+                    .AddScopedAsyncStartupService<SessionService>()
+                    .AddScoped<TournamentCommunicator>()
+                    .AddScoped<DeckRepository>()
+                    .AddScoped<AccountRepository>()
+                    .AddScoped<PlayerProfileRepository>()
+                    .AddScoped<FriendRepository>()
+                    .AddScoped<DeckService>()
+                    .AddScoped<GameManager>()
+                    .AddScoped<SessionManager>()
+                    .AddScoped<IStreamHandler, HexStreamHandler>()
+                    .AddScoped<TournamentRepository>()
+                    .AddScoped<TcpListener>(sp =>
+                    {
+                        var ip = IPAddress.Parse(hb.Configuration["Dingler:Endpoints:TCP:Url"] ?? "127.0.0.1");
+                        if (!int.TryParse(hb.Configuration["Dingler:Endpoints:TCP:Port"], out var port))
+                        {
+                            port = 9933;
+                        }
+
+                        return new TcpListener(ip, port);
+                    })
+                    .AddDbContextFactory<GameDataContext>(options =>
+                    {
+                        options.UseSqlite(connectionString ?? "");
+                    });
+            });
+
+            DinglerEncoder.RegisterTypeSwap<TrackedPlayer, RemotePlayer>();
+            DinglerEncoder.RegisterTypeSwap<TrackedCastSpells, CastSpells>();
+            DinglerEncoder.RegisterTypeSwap<TrackedChampions, Champions>();
+            DinglerEncoder.RegisterTypeSwap<TrackedChoosing, ChoosingZone>();
+            DinglerEncoder.RegisterTypeSwap<TrackedDeck, Deck>();
+            DinglerEncoder.RegisterTypeSwap<TrackedDiscard, DiscardPile>();
+            DinglerEncoder.RegisterTypeSwap<TrackedHand, Hand>();
+            DinglerEncoder.RegisterTypeSwap<TrackedPlayedResources, PlayedResources>();
+            DinglerEncoder.RegisterTypeSwap<TrackedSimulacrum, Simulacrum>();
+            DinglerEncoder.RegisterTypeSwap<TrackedUnderground, Underground>();
+            DinglerEncoder.RegisterTypeSwap<TrackedWarzone, Warzone>();
+            DinglerEncoder.RegisterTypeSwap<TrackedVoid, VoidPile>();
+
+            hostBuilder.BuildGameServer((hb, options) =>
+            {
+                var url = hb.Configuration["Dingler:Endpoints:TCP:Url"] ?? "127.0.0.1";
+
+                if (!int.TryParse(hb.Configuration["Dingler:Endpoints:TCP:Port"], out var port))
+                {
+                    port = 9933;
+                }
+
+                options.Url = url;
+                options.Port = port;
+
+                options.IncomingPipelineBuilder
+                    .Use(new ParseMiddleware())
+                    .Use(new DecodeMiddleware());
+                
+                options.OutgoingPipelineBuilder
+                    .Use(new EncodeMiddleware());
+            });
+
+            var host = hostBuilder.Build();
+            return host;
+        }
+    }
+}

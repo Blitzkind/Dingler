@@ -1,0 +1,2 @@
+# DLLs Folder
+This folder is used to hold the Assembly-CSharp-firstpass.dll, NCalc.dll, and the ICSharpCode.SharpZipLib.dll. All of these DLLs are downloaded with the Hex Client. You are responsible for supplying these DLLs and the project will not run without them.
