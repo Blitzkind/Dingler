@@ -46,3 +46,5 @@ While this attempts to be as accurate as possible there are some issues that pre
   - I didn't want to bother making a bespoke registration page. Just type your username in with any password. If that user does not exist, congrats, you own it with that password.
 - Will PVE be supported?
   - At this point, I don't have the bandwidth, that being said, if you want to work on it, fork it and let's gooooooo.
+- Why are the releases so large?
+  - In order to keep using these easy for all users, the compiled binaries are self contained so you don't need to download or install a huge number of dependencies from Microsoft
