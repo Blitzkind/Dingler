@@ -19,7 +19,7 @@ public class TournamentMatch
 	private readonly GameSettings _gameSettings;
 	private readonly GameManager _gameManager;
 	private TaskCompletionSource _tcs;
-	private int _playersReady = 0;
+	private ConcurrentDictionary<string, byte> _readyPlayers;
 
 	private readonly ConcurrentDictionary<string, bool> _requestedToLeave;
 	private readonly Lock _sideboardLock;
@@ -44,6 +44,7 @@ public class TournamentMatch
 		TournamentInfo = tournamentInfo;
 		_tcs = new TaskCompletionSource();
 		_sideboardLock = new Lock();
+		_readyPlayers = new ConcurrentDictionary<string, byte>();
 		_requestedToLeave = new ConcurrentDictionary<string, bool>
 		{
 			[tournamentPairing.Player1.Name] = false,
@@ -92,7 +93,7 @@ public class TournamentMatch
 			lock (_sideboardLock)
 			{
 				Phase = MatchPhase.PlayingGame;
-				_playersReady = 0;
+				_readyPlayers.Clear();
 			}
 			
 			GameStarted?.Invoke(this, game);
@@ -136,10 +137,13 @@ public class TournamentMatch
 				return;
 
 			TournamentPairing.Decks[username] = deck;
-			_playersReady++;
-		
-			if (_playersReady == 2)
-				_tcs.SetResult();
+			_readyPlayers[username] = 1;
+
+			if (!_readyPlayers.ContainsKey(TournamentPairing.Player1.Name) ||
+			    !_readyPlayers.ContainsKey(TournamentPairing.Player2.Name))
+				return;
+			
+			_tcs.TrySetResult();
 		}
 	}
 
