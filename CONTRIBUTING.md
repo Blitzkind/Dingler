@@ -1,6 +1,6 @@
 # Contributing
 
-- No LLM PRs please. I know "this is how the industry is moving" but I do not care. This is a hobby and learning project. Work with your hands and your own brain. Embrace the friction.
+- No LLM PRs please. I know "this is how the industry is moving" but I do not care. This is a hobby and learning project. Embrace the friction.
 
 - Do not use Harmony Patches for anything outside of the following
   - Structural changes
