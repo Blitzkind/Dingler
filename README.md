@@ -16,11 +16,15 @@ A server emulator for Hex: Shards of Fate written in C# that attempts to mimic h
   - System.EnterpriseServices.dll
   - System.Web.Services.dll
   - UnityEngine.dll
-- Then boot Dingler.Auth followed by Dinger.Terminal. Hit run on the terminal and you're good to go locally.
-- Update your client to point at the game server and auth. To just run locally by default these should be changed in config.ini in your Hex installation folder
+- Update the appsettings.json file to point at your Hex: Shards of Fate installation directory.
+  - If installed fresh from Steam this is <SteamFolder>/steamapps/common/HEX SHARDS OF FATE
+- Update your client to point at the game server and auth. To just run locally by default these should be changed in config.ini in the above Hex directory
   - GameServerIP=127.0.0.1
   - CZEAuthUrl=http://localhost:5000/auth/hexlogin
 - If at any point someone hosts a real server for gameplay, you'll point at their urls instead.
+- Boot Dingler.Auth first followed by Dingler.Terminal
+- Hit Start Server and wait for it to boot
+- Enjoy playing Hex again!
 
 ## Known issues
 While this attempts to be as accurate as possible there are some issues that present themselves as backend bugs when they are just presentational.
