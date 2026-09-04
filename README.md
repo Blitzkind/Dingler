@@ -8,7 +8,8 @@ A server emulator for Hex: Shards of Fate written in C# that attempts to mimic h
 - Most recent Hex client from either Steam or standalone
 
 ## Installation
-- Getting the most recent version of the release is the first part. After that, you must go to the client and copy the following files into the install folder:
+- Download the latest release and extract somewhere on your pc.
+- Copy and paste the following dlls from your Hex client installation into the extracted folder
   - Assembly-CSharp-firstpass.dll
   - ICSharpCode.SharpZipLib.dll
   - NCalc.dll
