@@ -9,7 +9,7 @@ A server emulator for Hex: Shards of Fate written in C# that attempts to mimic h
 
 ## Installation
 - Download the latest release and extract somewhere on your pc.
-- Copy and paste the following dlls from your Hex client installation into the extracted folder
+- Copy and paste the following dlls from your Hex client installation into the extracted Dingler.Terminal folder
   - Assembly-CSharp-firstpass.dll
   - ICSharpCode.SharpZipLib.dll
   - NCalc.dll
