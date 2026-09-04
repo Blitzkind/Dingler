@@ -57,3 +57,5 @@ While this attempts to be as accurate as possible there are some issues that pre
   - Upon first boot a data folder will be created in the root folder of Auth and Terminal. Those folders will contain sqlite files that hold that information
 - I tried to run my client and it gave me a werid error with no login prompt.
   - You're likely trying to run this from the steam app proper. While there is possibly some way to make this work, Dingler currently doesn't support this. You'll need to go into your install directory and run Hex.exe manually
+- Does chat work?
+  - No, but Discord does.
