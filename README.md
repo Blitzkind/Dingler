@@ -18,7 +18,7 @@ A server emulator for Hex: Shards of Fate written in C# that attempts to mimic h
   - System.Web.Services.dll
   - UnityEngine.dll
 - Update the appsettings.json file's "GamedataLocation" entry to point at your Hex: Shards of Fate installation directory.
-  - If installed fresh from Steam this is <SteamFolder>/steamapps/common/HEX SHARDS OF FATE
+  - If installed fresh from Steam this is {steamFolder}/steamapps/common/HEX SHARDS OF FATE
 - Update your client to point at the game server and auth. To just run locally by default these should be changed in config.ini in the above Hex directory
   - GameServerIP=127.0.0.1
   - CZEAuthUrl=http://localhost:5000/auth/hexlogin
