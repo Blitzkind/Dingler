@@ -244,6 +244,38 @@ public sealed class HexRulesEngine : AuthoritativeSessionBase, IDisposable
 		return true;
 	}
 
+	public override bool VoidCard(Card card, Player voidingPlayer, TAC abilityData)
+	{
+		if (!base.VoidCard(card, voidingPlayer, abilityData))
+			return false;
+
+		if (abilityData is not AbilityInstance ability)
+			return true;
+
+		var template = ability.m_AbilityTemplate;
+		var cost = ability.AbilityXCostData;
+		
+		if (template is null || !template.tac.GetBool(IntAttrs.Scrounge) || cost is null)
+			return true;
+
+		var voidedCards = cost.CardsToVoid;
+		
+		if (voidedCards.Count == 0)
+			return true;
+
+		int recorded = ability.Get(ListAttrs.VoidedCards)?.Count ?? 0;
+		if (recorded != voidedCards.Count)
+			return true;
+
+		DispatchSessionEvent(new ScroungeSessionEventArgs
+		{
+			SourceCard = ability.SourceCard?.m_SessionCardId ?? SessionCardId.Invalid,
+			VoidedCards = new List<SessionCardId>(voidedCards)
+		});
+
+		return true;
+	}
+
 	private CombatListingSessionEventArgs CombatListingFor(Player player, List<Combat> combats)
 	{
 		var combatListing = new CombatListingSessionEventArgs
