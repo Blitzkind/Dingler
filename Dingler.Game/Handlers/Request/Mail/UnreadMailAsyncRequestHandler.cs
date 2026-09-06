@@ -3,8 +3,6 @@ using Dingler.Server;
 using static HexGame::Game.Shared.Mail.Messages.Mail;
 using Dingler.Server.Abstractions;
 using Dingler.Server.Attributes;
-using Dingler.Game.Extensions;
-using Dingler.Game.Protocol;
 using Dingler.Game.Services;
 using Dingler.Game.Tournaments;
 using HexGame::Game.Shared;
@@ -39,7 +37,7 @@ public sealed class
 
 		await context.SendMessageToClientAsync(tournamentDescriptions, token);
 		
-		var deckTask = _deckService.GetPlayerDecksAsync(context.GetProfileId());
+		var deckTask = _deckService.GetPlayerDecksAsync(context.ProfileId);
 
 		await _collectionCacheService.SendProfileStreamAsync(context, deckTask, token);
 
@@ -47,7 +45,7 @@ public sealed class
 		{
 			Message = new ProfileGenericMessage()
 			{
-				Data = context.GetOrCreateEncoder().Encode(new ProfileGenericLoginStreamDone())
+				Data = context.Encoder.Encode(new ProfileGenericLoginStreamDone())
 			}
 		};
 

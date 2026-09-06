@@ -10,7 +10,6 @@ using Dingler.Server;
 using Dingler.Server.Abstractions;
 using Dingler.Data.Entities.GameData;
 using Dingler.Game.Domain;
-using Dingler.Game.Extensions;
 using HexGame::Game.Shared.Network.Profile;
 using HexGame::Game.Shared.Profile;
 
@@ -105,12 +104,14 @@ namespace Dingler.Game.Services
         public async Task SendProfileStreamAsync(SessionContext context, Task<List<Deck>> deckTask,
             CancellationToken token)
         {
-            var accountId = context.GetProfileId();
-            var identity = new Network.Ident(accountId, context.GetProfileId());
+            var accountId = context.AccountId;
+            var profileId = context.ProfileId;
+            
+            var identity = new Network.Ident(accountId, profileId);
 
             var keep = new KeepInfo()
             {
-                Id = new UID(UID.Type.Keep, context.GetProfileId()),
+                Id = new UID(UID.Type.Keep, profileId),
                 Owner = new UID(UID.Type.ServiceProfile, accountId),
                 Name = context.UserName
             };
@@ -138,7 +139,7 @@ namespace Dingler.Game.Services
                         continue;
 
                     var deckBits = dinglerBits.ToDeckBits();
-                    context.TryAddDeck(deckBits);
+                    context.Decks.TryAdd(deckBits.Id, deckBits);
                     deckBitsList.Add(deckBits);
                 }
             }

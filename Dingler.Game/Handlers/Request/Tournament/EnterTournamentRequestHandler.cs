@@ -2,7 +2,6 @@ extern alias HexGame;
 using Dingler.Server;
 using Dingler.Server.Abstractions;
 using Dingler.Server.Attributes;
-using Dingler.Game.Extensions;
 using Dingler.Game.Tournaments;
 using HexGame::Game.Client.Network.Tournaments;
 using HexGame::Game.Shared;
@@ -41,12 +40,12 @@ public sealed class EnterTournamentRequestHandler : IAsyncRequestHandler<EnterTo
 		if (!_tournamentManager.TryGetRegisterableTournament(tournamentId, out var tournament))
 			return _invalidTournamentError;
 		
-		if (!context.TryGetDeck(request.DeckId.GetInstanceId(), out var deck))
+		if (!context.Decks.TryGetValue(request.DeckId.GetInstanceId(), out var deck))
 			return _invalidDeckError;
 
 		var playerUid = request.PlayerId.IsValid()
 			? request.PlayerId
-			: new UID(UID.Type.ServicePlayer, context.GetProfileId());
+			: new UID(UID.Type.ServicePlayer, context.ProfileId);
 
 		var result = await tournament.RegisterAsync(context.UserName!, deck, playerUid);
 

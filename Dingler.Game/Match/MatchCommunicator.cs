@@ -3,8 +3,6 @@ using Dingler.Server;
 using Dingler.Game.Games;
 using HexGame::Game.Shared;
 using HexGame::Game.Shared.Network.Tournaments;
-using HexGame::Game.Shared.Tournaments.Messages;
-using mc_issue_attachment_addCompletedEventArgs = HexGame::mc_issue_attachment_addCompletedEventArgs;
 
 namespace Dingler.Game.Match;
 

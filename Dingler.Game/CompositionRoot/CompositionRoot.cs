@@ -18,7 +18,6 @@ using Dingler.Game.Tournaments;
 using HexGame::Game.Shared;
 using HexGame::Game.Shared.Mechanics;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

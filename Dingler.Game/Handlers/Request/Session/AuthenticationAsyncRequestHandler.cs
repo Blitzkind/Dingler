@@ -1,7 +1,6 @@
 extern alias HexGame;
 using Dingler.Server;
 using Dingler.Server.Abstractions;
-using Dingler.Game.Extensions;
 using Dingler.Game.Protocol.Messages.Requests;
 using Dingler.Game.Services;
 using HexGame::Game.Shared.Network.SFS;
@@ -29,8 +28,8 @@ public sealed class AuthenticationAsyncRequestHandler : IAsyncRequestHandler<Aut
 		if (response.Success)
 		{
 			context.UserName = request.UserName;
-			context.SetProfileId(response.reckID.GetInstanceId());
-			context.SetAccountId(response.authID.GetInstanceId());
+			context.ProfileId = response.reckID.GetInstanceId();
+			context.AccountId = response.authID.GetInstanceId();
 			context.IsAuthenticated = true;
 
 			_sessionManager.TryLinkUserToSession(context.UserName, context);

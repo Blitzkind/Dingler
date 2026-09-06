@@ -5,7 +5,7 @@ using System.Text;
 using HexGame::Game.Shared.Network;
 using HexGame::GPG.Core.MemHelpers;
 
-namespace Dingler.Game.Protocol;
+namespace Dingler.Server;
 
 public sealed class DinglerEncoder
 {

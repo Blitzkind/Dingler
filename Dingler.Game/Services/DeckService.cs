@@ -1,6 +1,5 @@
 ﻿extern alias HexGame;
 
-using Dingler.Game.Extensions;
 using HexGame::Game.Client.Network.Profile;
 using HexGame::Game.Shared;
 using HexGame::Game.Shared.Domain;
@@ -36,7 +35,7 @@ namespace Dingler.Game.Services
 
         public async Task<AddNewDeckResponse> AddNewDeck(SessionContext context, AddNewDeckRequestArgs args)
         {
-            var playerId = context.GetProfileId();
+            var playerId = context.ProfileId;
 
             var removeTask = _deckRepository.RemoveDeckWithNameOwnedByPlayer(args.DeckName, playerId);
 
@@ -51,7 +50,7 @@ namespace Dingler.Game.Services
             var removedDeckId = await removeTask;
 
             if (removedDeckId != 0)
-                context.RemoveDeck(removedDeckId, out var _);
+                context.Decks.Remove(removedDeckId, out _);
 
             var addedDeck = await _deckRepository.CreateDeckAsync(newDeck);
 
@@ -65,12 +64,12 @@ namespace Dingler.Game.Services
 
             var deckBits = dinglerDeckBits?.ToDeckBits();
 
-            if (deckBits is null || !context.TryAddDeck(deckBits))
+            if (deckBits is null || !context.Decks.TryAdd(deckBits.Id, deckBits))
                 throw new Exception($"Could not add deck to user's cached decks");
 
             var response = new AddNewDeckResponse
             {
-                Deckbits = deckBits ?? new deck_bits(),
+                Deckbits = deckBits,
                 DeckID = new UID(UID.Type.Deck, (ulong)addedDeck.Id),
                 DeckName = addedDeck.DeckName,
                 Error = EAddNewDeckError.Ok,
@@ -81,7 +80,7 @@ namespace Dingler.Game.Services
 
         public GetDeckInfoResponse GetDeckInfo(SessionContext userProfile, GetDeckInfoRequestArgs args)
         {
-            if (!userProfile.TryGetDeck(args.DeckID.GetInstanceId(), out var deck))
+            if (!userProfile.Decks.TryGetValue(args.DeckID.GetInstanceId(), out var deck))
             {
                 throw new InvalidOperationException($"No such deck with id {args.DeckID.GetInstanceId()} available.");
             }
@@ -125,7 +124,7 @@ namespace Dingler.Game.Services
         {
             var deckId = args.DeckID.GetInstanceId();
 
-            var isUpdate = context.TryGetDeck(deckId, out var deckBits);
+            var isUpdate = context.Decks.TryGetValue(deckId, out var deckBits);
 
             if (!isUpdate)
             {
@@ -138,18 +137,18 @@ namespace Dingler.Game.Services
             {
                 if (isUpdate)
                 {
-                    throw new InvalidOperationException($"Deck id {deckId} does not exist in database but was found in session for player {context.GetProfileId()}");
+                    throw new InvalidOperationException($"Deck id {deckId} does not exist in database but was found in session for player {context.ProfileId}");
                 }
 
                 deck = new Deck();
                 deck.DeckName = args.DeckName;
                 deck.DeckGuid = Guid.NewGuid();
-                deck.PlayerProfileId = context.GetProfileId();
+                deck.PlayerProfileId = context.ProfileId;
                 deck.ChampionGuid = ResourceId.Invalid.m_Guid;
 
                 await _deckRepository.CreateDeckAsync(deck).ConfigureAwait(false);
                 deckBits!.Id = (ulong)deck.Id;
-                context.AddOrUpdateDeck(deckBits);
+                context.Decks[deckBits.Id] = deckBits;
             }
 
             deckBits!.ActiveGems = args.ActiveGems;
@@ -243,7 +242,7 @@ namespace Dingler.Game.Services
             var deckId = args.DeckID.GetInstanceId();
             var removeTask = _deckRepository.RemoveDeckAsync((int)deckId);
 
-            userProfile.RemoveDeck(deckId, out var _);
+            userProfile.Decks.Remove(deckId, out _);
 
             await removeTask;
 

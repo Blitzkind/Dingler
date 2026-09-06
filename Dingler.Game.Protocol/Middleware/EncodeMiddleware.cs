@@ -175,7 +175,7 @@ public sealed class EncodeMiddleware : IMiddleware<RequestContext>
 		}
 		else
 		{
-			var encoder = context.SessionContext.GetOrCreateEncoder();
+			var encoder = context.SessionContext.Encoder;
 			var encodedResponse = encoder.Encode(context.ResponseObject);
 			var compressedResponse = Compressor.Compress(encodedResponse, Deflater.BEST_COMPRESSION);
 			context.TryGetRequestId(out var requestId);
@@ -194,7 +194,8 @@ public sealed class EncodeMiddleware : IMiddleware<RequestContext>
 			context.RawResponse = encoder.Encode(wrapper);
 		}
 
-		header.ServerCount = context.SessionContext.GetCurrentServerMessageCount();
+		header.ServerCount = context.SessionContext.CurrentMessageCount;
+		context.SessionContext.CurrentMessageCount++;
 		
 		context.RawResponse = SerializeResponseForHex(header, context.RawResponse);
 		
