@@ -26,6 +26,7 @@ namespace Dingler.Server
 
         public SessionContext(Guid sessionId)
         {
+            CurrentMessageCount = 1;
             SessionId = sessionId;
             CreationTime = DateTime.UtcNow;
             Decks = new Dictionary<ulong, deck_bits>();
