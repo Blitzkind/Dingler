@@ -2,7 +2,6 @@ extern alias HexGame;
 using Dingler.Server;
 using Dingler.Server.Abstractions;
 using Dingler.Server.Attributes;
-using Dingler.Game.Extensions;
 using Dingler.Game.Protocol.Chat;
 using Dingler.Game.Tournaments;
 
@@ -29,7 +28,7 @@ public sealed class JoinTournamentRequestHandler : IAsyncRequestHandler<Tourname
 
 		if (result)
 		{
-			context.SetCurrentTournamentId(request.TournamentId);
+			context.CurrentTournamentId = request.TournamentId;
 		}
 	}
 }

@@ -16,6 +16,13 @@ namespace Dingler.Auth.Endpoints
                 
                 return result;
             });
+
+            app.MapGet("/steam/login",
+                async (string steamId, string lang, string region, string steamauth, string? atok, string? aval) =>
+                {
+                    Console.WriteLine("break here");
+                    return 2;
+                });
             return app;
         }
     }

@@ -2,7 +2,6 @@ extern alias HexGame;
 using Dingler.Server;
 using Dingler.Server.Abstractions;
 using Dingler.Server.Attributes;
-using Dingler.Game.Extensions;
 using Dingler.Game.Games;
 using Dingler.Game.Protocol.Chat;
 using Dingler.Game.Tournaments;
@@ -40,8 +39,7 @@ public sealed class GameRoomLeaveRequestHandler : IRequestHandler<GameRoomLeaveR
 
 		if (!_gameManager.TryGetGameForPlayer(leaver, out var game))
 		{
-			if (context.TryGetCurrentTournamentId(out var tournamentId) &&
-			    _tournamentManager.TryGetTournament(tournamentId, out var tournament))
+			if (_tournamentManager.TryGetTournament(context.CurrentTournamentId, out var tournament))
 			{
 				tournament.HandlePlayerWantsToLeave(leaver);
 			}
