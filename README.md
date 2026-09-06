@@ -27,6 +27,12 @@ A server emulator for Hex: Shards of Fate written in C# that attempts to mimic h
 - Hit Start Server and wait for it to boot
 - Enjoy playing Hex again!
 
+During non local deployment, you can change the address the server binds to by editing the following value within appsettings.json within Dingler.Terminal
+  - Dingler
+    - Endpoints
+      - TCP
+        - Url 
+
 ## Known issues
 While this attempts to be as accurate as possible there are some issues that present themselves as backend bugs when they are just presentational.
 - Sir Pies, Brown Fox Scout, and Subterranean Spy do not work correctly. The current implementation of the rules engine does not reflect when the game has extra known zones and therefore does not send the card info correctly to the players
