@@ -8,12 +8,14 @@ namespace Dingler.Game.Cards;
 
 public static class CardExtensions
 {
-	public static CardUpdatedSessionEventArgs ConvertToUpdateEventForPlayer(this Card card, Player player, bool forceFaceup)
+	public static CardUpdatedSessionEventArgs ConvertToUpdateEventForPlayer(this Card card, Player player, bool forceFaceUp)
 	{
 		CardRepresentation representation;
-		var isCardFaceup = forceFaceup || card.CanPlayerSeeCard(player);
+		var canSee = card.CanPlayerSeeCard(player);
+		var inFaceDownZone = card.IsCardCollectionFaceDown(player);
+		var isCardFaceUp = forceFaceUp || (canSee && (!inFaceDownZone || !card.IsOnChain()));
 
-		if (isCardFaceup)
+		if (isCardFaceUp)
 		{
 			representation = new CardRepresentation(card);
 			representation.Defense = card.CurrentHealthValue;
@@ -45,7 +47,7 @@ public static class CardExtensions
 			representation = CardRepresentation.BlankCard;
 		}
 
-		var update = representation.ConvertToUpdateEvent(!isCardFaceup);
+		var update = representation.ConvertToUpdateEvent(!isCardFaceUp);
 
 		update.SessionCardId = card.m_SessionCardId;
 		update.PlayerId = player.m_PlayerId;
