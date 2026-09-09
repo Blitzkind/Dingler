@@ -2,9 +2,10 @@ extern alias HexGame;
 using HexGame::Game.Shared;
 using HexGame::Game.Shared.Mechanics;
 using HexGame::Game.Shared.Mechanics.Abilities;
+using HexGame::Game.Shared.Resources;
 using HexGame::Reckoning.Game;
 
-namespace Dingler.Game.Services;
+namespace Dingler.Game.Games;
 
 public sealed class GameOptionService
 {
@@ -88,18 +89,23 @@ public sealed class GameOptionService
 	private void GetAllPlayableCardsForPlayer(Player player, List<Card> cards,
 		Dictionary<Card, PlayerOptionSessionEventArgs> cardOptions)
 	{
+		var playCardAbility = TemplateManager.Instance.Abilities[BuiltInResources.PlayCardAbilityTemplateId];
 		foreach (var card in cards)
 		{
 			if (!_session.CanPlayCard(card, player, card.GetCardContext().GetBool(IntAttrs.OwnerCanPlayForFree)))
 				continue;
 
-			cardOptions[card] = new PlayerOptionSessionEventArgs()
+			var option = new PlayerOptionSessionEventArgs()
 			{
 				Card = card.m_SessionCardId,
 				SessionId = _session.m_SessionId,
 				State = ECardUsage.Play,
 				Instances = new List<SessionEventArgs>()
 			};
+			
+			option.Instances.Add(CreateOptionInstanceForPlayer(player, card, playCardAbility, null));
+			
+			cardOptions[card] = option;
 		}
 	}
 

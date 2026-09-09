@@ -60,7 +60,6 @@ public static class HostBuilderExtensions
 								return parameters[0].ParameterType.GetGenericTypeDefinition() ==
 								       interfaceGenericDefinition;
 							});
-
 						
 						registerMethod
 							.MakeGenericMethod(genericArgs)
