@@ -450,6 +450,11 @@ public sealed class HexRulesEngine : AuthoritativeSessionBase, IDisposable
 				    {
 					    m_PreviousCardCollection: ECardCollections.Hand,
 					    m_CurrentCardCollection: ECardCollections.CastSpells or ECardCollections.PlayedResources
+				    }
+				    or
+				    {
+					    m_PreviousCardCollection: ECardCollections.CastSpells,
+					    m_CurrentCardCollection: ECardCollections.Deck 
 				    })
 				{
 					continue;

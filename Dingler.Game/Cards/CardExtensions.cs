@@ -12,8 +12,7 @@ public static class CardExtensions
 	{
 		CardRepresentation representation;
 		var canSee = card.CanPlayerSeeCard(player);
-		var inFaceDownZone = card.IsCardCollectionFaceDown(player);
-		var isCardFaceUp = forceFaceUp || (canSee && (!inFaceDownZone || !card.IsOnChain()));
+		var isCardFaceUp = forceFaceUp || canSee;
 
 		if (isCardFaceUp)
 		{
