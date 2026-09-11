@@ -54,4 +54,11 @@ public class WaitingRoom : IRegisterable, IJoinable
 		return _actor.ScheduleWork( (state, workToken) =>
 			state.CurrentTournament.TryJoinAsync(context, request, workToken));
 	}
+	
+	
+
+	public Task DropFromWaitingRoomAsync(string contextUserName, CancellationToken token)
+	{
+		return _actor.ScheduleWork((state, _) => state.CurrentTournament.DropAsync(contextUserName));
+	}
 }

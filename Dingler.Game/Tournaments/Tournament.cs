@@ -146,6 +146,11 @@ public sealed class Tournament : IRegisterable, IJoinable, IDisposable
 	{
 		return _actor.ScheduleWork(state =>
 		{
+			if (!state.TournamentInfo.State.In(TournamentState.WaitForStart))
+			{
+				return RegistrationResult.Fail("Tournament has already started");
+			}
+			
 			var players = state.TournamentInfo.Players;
 			if (!players.Any(p => p.Name.Equals(username)))
 				return RegistrationResult.Fail("Player is not registered to tournament");
@@ -177,7 +182,7 @@ public sealed class Tournament : IRegisterable, IJoinable, IDisposable
 				return;
 			
 			if (state.TournamentInfo.Players.Count < state.TournamentInfo.MinEntrants)
-				return; // We cancellin' cuz this game SUCKS
+				return;
 
 			state.TournamentInfo.State = TournamentState.PlayGames.WaitForRoundToFinish;
 			state.TournamentInfo.TournamentStatus = ETournamentStatus.InProgress;
@@ -371,18 +376,6 @@ public sealed class Tournament : IRegisterable, IJoinable, IDisposable
 	public void Dispose()
 	{
 		_semaphoreSlim.Dispose();
-	}
-
-	// Dropping doesn't work right. I'll fix it later, I just want this done
-	public Task DropFromWaitingRoomAsync(string contextUserName, CancellationToken token)
-	{
-		return _actor.ScheduleWork(async (state, _) =>
-		{
-			if (IsWaitingRoom || state.TournamentInfo.State != TournamentState.WaitForStart)
-				return;
-
-			await DropAsync(contextUserName);
-		});
 	}
 
 	// isFullJoin is when hex has you join {roomName}_full. It's meant to say "send me the full room state". Players
