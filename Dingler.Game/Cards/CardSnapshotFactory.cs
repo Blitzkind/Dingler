@@ -1,5 +1,5 @@
 ﻿extern alias HexGame;
-
+using HexGame::Game.Shared;
 using HexGame::Game.Shared.Mechanics;
 
 namespace Dingler.Game.Cards
@@ -17,7 +17,9 @@ public static class CardSnapshotFactory
             var context = card.GetCardContext();
             var prime = 17;
 
-            var hash = HashCode.Combine(prime, context.m_CurrentType, context.m_CurrentSubtype, context.m_CurrentAttackValue, context.m_CurrentDefenseValue, context.m_CurrentResourceCost, context.m_CastingCostAdjustment, context.m_CurrentAttributeFlags);
+            var hash = HashCode.Combine(prime, context.m_CurrentType, context.m_CurrentSubtype,
+                context.m_CurrentAttackValue, context.m_CurrentDefenseValue, context.m_CurrentResourceCost,
+                context.m_CastingCostAdjustment, context.m_CurrentAttributeFlags);
 
             foreach (var threshold in card.Thresholds)
             {
@@ -26,9 +28,12 @@ public static class CardSnapshotFactory
 
             hash = HashCode.Combine(hash, card.CurrentCardState, card.CurrentDamageValue, card.EscalationCount);
 
+            if (card.m_CurrentCardCollection == ECardCollections.Deck)
+                hash = HashCode.Combine(hash, card.IsOnChain());
+            
             hash = HashAllTACs(context, hash);
             var abilities = card.CurrentAbilities.ToList();
-            abilities.Sort();
+            abilities.Sort((a, b) => a.guid.CompareTo(b.guid));
             foreach (var abilityId in abilities)
             {
                 hash = HashCode.Combine(hash, abilityId.GetHashCode());
@@ -61,5 +66,6 @@ public static class CardSnapshotFactory
 
             return hash;
         }
+    
     }
 }
