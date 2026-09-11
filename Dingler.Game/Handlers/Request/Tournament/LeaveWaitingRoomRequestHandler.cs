@@ -21,7 +21,7 @@ public sealed class LeaveWaitingRoomRequestHandler : IAsyncRequestHandler<LeaveW
 	public async Task<LeaveWaitingRoomResponse> HandleRequestAsync(SessionContext context,
 		LeaveWaitingRoomRequestArgs request, CancellationToken token)
 	{
-		if (!_tournamentManager.TryGetTournament(request.WaitingRoomID, out var tournament))
+		if (!_tournamentManager.TryGetWaitingRoom(request.WaitingRoomID, out var waitingRoom))
 		{
 			return new LeaveWaitingRoomResponse()
 			{
@@ -32,7 +32,7 @@ public sealed class LeaveWaitingRoomRequestHandler : IAsyncRequestHandler<LeaveW
 			};
 		}
 
-		await tournament.DropFromWaitingRoomAsync(context.UserName!, token);
+		await waitingRoom.DropFromWaitingRoomAsync(context.UserName!, token);
 
 		return new LeaveWaitingRoomResponse()
 		{
