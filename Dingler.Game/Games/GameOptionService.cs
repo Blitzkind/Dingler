@@ -294,6 +294,7 @@ public sealed class GameOptionService
 		var targetsForAbility = _session.GetPotentialTargetsForAbility(sourceCard, player,
 			abilityTemplate.AbilityTemplateId, abilityInstance);
 
+		var hiddenTargets = new List<SessionCardId>();
 		foreach (var kvp in targetsForAbility)
 		{
 			foreach (var target in kvp.Value)
@@ -306,8 +307,19 @@ public sealed class GameOptionService
 					Targets = target.Value,
 					AdditionalTargets = new List<SessionCardId>()
 				});
+
+				foreach (var cardId in target.Value)
+				{
+					if (!_session.ResourceCache.GetCard(cardId).CanPlayerSeeCard(player))
+					{
+						hiddenTargets.Add(cardId);
+					}
+				}
 			}
 		}
+		
+		if (hiddenTargets.Count > 0)
+			_session.RevealCards(player, hiddenTargets, abilityInstance, inactive: false);
 
 		var costs =
 			_session.GetPotentialCostsForAbility(sourceCard, player, abilityTemplate.AbilityTemplateId);
