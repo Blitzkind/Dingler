@@ -52,6 +52,8 @@ While this attempts to be as accurate as possible there are some issues that pre
 - Making the tournament system not so embarassing
 
 ## FAQ
+- How do I use this?
+  - The recommended way to use Dingler with mulple users without a full hosting solution is the use Hamachi. Instructions [here](https://github.com/Blitzkind/Dingler/wiki/Hamachi-Instructions)
 - How do I register? There's no page.
   - I didn't want to bother making a bespoke registration page. Just type your username in with any password. If that user does not exist, congrats, you own it with that password.
 - Will PVE be supported?
