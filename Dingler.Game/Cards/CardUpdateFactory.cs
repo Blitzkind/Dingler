@@ -4,17 +4,18 @@ using HexGame::Game.Shared.Mechanics;
 
 namespace Dingler.Game.Cards
 { 
-    public static class CardUpdateFactory 
+    public static class CardUpdateFactory
     {
-        public static CardUpdatedSessionEventArgs CreateUpdateEventForPlayer(Player player, Card card, ECardCollections zone, bool forceFaceup = false)
+        public static CardUpdatedSessionEventArgs CreateUpdateEventForPlayer(Player player, Card card,
+            ECardCollections zone, bool forceFaceUp = false)
         {
-
             if (zone == ECardCollections.PlayedResources)
             {
                 zone = ECardCollections.None;
             }
 
-            CardUpdatedSessionEventArgs updateEvent = card.ConvertToUpdateEventForPlayer(player, forceFaceup || card.CurrentType == ECardTypes.Choice);
+            CardUpdatedSessionEventArgs updateEvent =
+                card.ConvertToUpdateEventForPlayer(player, forceFaceUp || card.CurrentType == ECardTypes.Choice);
             updateEvent.Collection = zone;
             updateEvent.Controller = card.GetControllingPlayer().m_PlayerId;
             updateEvent.SessionCardId = card.m_SessionCardId;

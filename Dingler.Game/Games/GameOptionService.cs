@@ -303,7 +303,7 @@ public sealed class GameOptionService
 					SessionId = _session.m_SessionId,
 					TargetId = target.Key,
 					TargetIndex = kvp.Key,
-					Targets = target.Value,
+					Targets = _session.SanatizeList(target.Value),
 					AdditionalTargets = new List<SessionCardId>()
 				});
 			}

@@ -393,7 +393,7 @@ public sealed class HexRulesEngine : AuthoritativeSessionBase, IDisposable
 			_cardVisibilityManager.TrySetCardAsVisibleForPlayer(player, card);
 			var cardUpdate =
 				CardUpdateFactory.CreateUpdateEventForPlayer(player, card, card.m_CurrentCardCollection,
-					forceFaceup: true);
+					forceFaceUp: true);
 			DispatchSessionEvent(player, cardUpdate);
 		}
 
