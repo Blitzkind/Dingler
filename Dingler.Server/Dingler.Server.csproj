@@ -18,6 +18,8 @@
       <Reference Include="Assembly-CSharp-firstpass">
         <HintPath>..\DLLs\Assembly-CSharp-firstpass.dll</HintPath>
         <Aliases>HexGame</Aliases>
+          <Private Condition="'$(Configuration)' == 'Debug'">true</Private>
+          <Private Condition="'$(Configuration)' == 'Release'">false</Private>
       </Reference>
       <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions">
         <HintPath>..\..\..\.nuget\packages\microsoft.extensions.dependencyinjection.abstractions\10.0.9\lib\net10.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>

@@ -86,7 +86,8 @@ public class TournamentMatch
 					var updatedDeck = TournamentPairing.Decks[playerName];
 					encounterData.TournamentDecks[i].PlayerDeck = updatedDeck;
 				}
-				
+
+				encounterData.FirstPlayer = forcedFirstPlayer;
 				game = _gameManager.CreateGameSession(TournamentInfo.TournamentID, TournamentPairing, encounterData, token);
 			}
 			
