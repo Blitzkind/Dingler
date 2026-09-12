@@ -36,7 +36,6 @@ During non local deployment, you can change the address the server binds to by e
 ## Known issues
 While this attempts to be as accurate as possible there are some issues that present themselves as backend bugs when they are just presentational.
 - Sir Pies, Brown Fox Scout, and Subterranean Spy do not work correctly. The current implementation of the rules engine does not reflect when the game has extra known zones and therefore does not send the card info correctly to the players
-- Scrounge visual effect does not work. This is just a visual bug, the fiery effect just doesn't work yet. 
 - The Tournament system is held together with hopes and dreams. It may have leaks. It may break. It's so rough man.
 - If you see any other issues please report it. Let it be known that any bugs that existed in the final version of Hex will likely be left alone. If at some point we want to make this the definitive version we can do that
 
