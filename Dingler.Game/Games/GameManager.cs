@@ -35,7 +35,8 @@ public sealed class GameManager : IDisposable
 		var assignedId = Interlocked.Increment(ref _currentMatchId);
 		var sessionUid = new UID(UID.Type.AuthoritativeSession, assignedId);
 
-		var engine = new HexRulesEngine($"game-{assignedId}", sessionUid, _loggerFactory?.CreateLogger<HexRulesEngine>())
+		var engine = new HexRulesEngine($"game-{assignedId}", sessionUid,
+			_loggerFactory?.CreateLogger<HexRulesEngine>())
 		{
 			m_EncounterData = encounterData,
 			ForcedFirstPlayer = encounterData.FirstPlayer
