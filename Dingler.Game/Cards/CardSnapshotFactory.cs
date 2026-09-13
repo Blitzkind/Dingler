@@ -3,9 +3,9 @@
 using HexGame::Game.Shared.Mechanics;
 
 namespace Dingler.Game.Cards
-{
-public static class CardSnapshotFactory
-{
+{ 
+    public static class CardSnapshotFactory 
+    {
         public static CardSnapshot Create(Card card)
         {
             var hash = HashCard(card);
@@ -33,7 +33,7 @@ public static class CardSnapshotFactory
             
             hash = HashAllTACs(context, hash);
             var abilities = card.CurrentAbilities.ToList();
-            abilities.Sort((a, b) => a.guid.CompareTo(b.guid));;
+            abilities.Sort(static (a, b) => a.guid.CompareTo(b.guid));;
             foreach (var abilityId in abilities)
             {
                 hash = HashCode.Combine(hash, abilityId.GetHashCode());
@@ -43,25 +43,39 @@ public static class CardSnapshotFactory
 
         private static int HashAllTACs(CardContext context, int hash)
         {
-            var intAttributes = context.GetCurrentIntAttrs()
-                .Where(a => a.Key.NotifyClient && a.Key != IntAttrs.TotalResources && a.Key != IntAttrs.CurrentResources)
-                .OrderBy(a => a.Key.name)
-                .Select(a => new { a.Key.name, a.Value })
-                .ToList();
-            
-            foreach (var attr in intAttributes)
+            hash = HashIntAttrs(context, hash);
+            hash = HashStringAttrs(context, hash);
+            return hash;
+        }
+
+        private static int HashIntAttrs(CardContext context, int hash)
+        {
+            var attrs = new List<KeyValuePair<IntAttrs, int>>(context.GetCurrentIntAttrs());
+            attrs.Sort(static (a, b) => string.CompareOrdinal(a.Key.name, b.Key.name));
+
+            foreach (var attr in attrs)
             {
-                var oldHash = hash;
-                hash = HashCode.Combine(hash, attr.name, attr.Value);
+                var key = attr.Key;
+                if (!key.NotifyClient || key == IntAttrs.TotalResources || key == IntAttrs.CurrentResources)
+                    continue;
+
+                hash = HashCode.Combine(hash, key.name, attr.Value);
             }
 
-            var stringAttributes = context.GetCurrentStringAttrs().Where(a => a.Key.NotifyClient).OrderBy(a => a.Key.name).Select(a => new { a.Key.name, a.Value }).ToList();
+            return hash;
+        }
 
-            
-            foreach (var attr in stringAttributes)
+        private static int HashStringAttrs(CardContext context, int hash)
+        {
+            var attrs = new List<KeyValuePair<StringAttrs, string>>(context.GetCurrentStringAttrs());
+            attrs.Sort(static (a, b) => string.CompareOrdinal(a.Key.name, b.Key.name));
+
+            foreach (var attr in attrs)
             {
-                var oldHash = hash;
-                hash = HashCode.Combine(hash, attr.name, attr.Value);
+                if (!attr.Key.NotifyClient)
+                    continue;
+
+                hash = HashCode.Combine(hash, attr.Key.name, attr.Value);
             }
 
             return hash;
