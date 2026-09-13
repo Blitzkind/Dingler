@@ -389,7 +389,6 @@ public sealed class HexRulesEngine : AuthoritativeSessionBase, IDisposable
 		foreach (var cardId in cards)
 		{
 			var card = ResourceCache.GetCard(cardId);
-			_cardVisibilityManager.TrySetCardAsVisibleForPlayer(player, card);
 			var cardUpdate =
 				CardUpdateFactory.CreateUpdateEventForPlayer(player, card, card.m_CurrentCardCollection,
 					forceFaceUp: true);
