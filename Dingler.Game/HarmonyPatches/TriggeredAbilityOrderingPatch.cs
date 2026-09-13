@@ -5,14 +5,14 @@ using HexGame::Game.Shared.Mechanics.GameActions;
 
 // The more I think about this the more I want it gone. If someone has time to look and see if an older version of Hex
 // runs the below combo the way its described without this patch, I'm willing to mark this down as "Hex Entertainment
-// changed how this works. This is realistic to before the shutdown". If you want it back uncomment the HarnmonyPatch attribute
+// changed how this works. This is realistic to before the shutdown". If you want it back uncomment the HarmonyPatch attribute
 
 namespace Dingler.Game.HarmonyPatches
 {
-    // Usually I wouldn't want to use a Harmony patch for some logic in the game but I can't seem to get ordering to work
+    // Usually I wouldn't want to use a Harmony patch for some logic in the game, but I can't seem to get ordering to work
     // correctly. To see what I mean, comment this out and run TerrorMill. In Hex before the shutdown, TerrorMill would
     // resolve like so:
-    // Mill egg -> Terrorantula spawn -> Prompts player for target -> Target choosen -> Mill 10 repeat
+    // Mill egg -> Terrorantula spawn -> Prompts player for target -> Target chosen -> Mill 10 repeat
     // Without this it goes:
     // Mill egg -> Terrorantula spawn -> Mill 10 -> chain again if we mill an egg -> finally prompt for targets
     // This looks bad. It fucks with the chain formatting.

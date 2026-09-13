@@ -40,8 +40,7 @@ public sealed class HexRulesEngine : AuthoritativeSessionBase, IDisposable
 	{
 		_cardVisibilityManager = new CardVisibilityManager();
 		_cardStatManager = new CardStatManager();
-		_gameOptionService = new GameOptionService(this);
-		new List<int>();
+		_gameOptionService = new GameOptionService(this, _cardStatManager);
 		_logger = logger;
 	}
 	
@@ -390,10 +389,9 @@ public sealed class HexRulesEngine : AuthoritativeSessionBase, IDisposable
 		foreach (var cardId in cards)
 		{
 			var card = ResourceCache.GetCard(cardId);
-			_cardVisibilityManager.TrySetCardAsVisibleForPlayer(player, card);
 			var cardUpdate =
 				CardUpdateFactory.CreateUpdateEventForPlayer(player, card, card.m_CurrentCardCollection,
-					forceFaceup: true);
+					forceFaceUp: true);
 			DispatchSessionEvent(player, cardUpdate);
 		}
 
@@ -681,13 +679,26 @@ public sealed class HexRulesEngine : AuthoritativeSessionBase, IDisposable
 		
 	private void SendChangedCardUpdates()
 	{
-		foreach (var player in GetAllPlayers())
-		{
-			var visibleCards = _cardVisibilityManager.GetListOfCardsPlayerCanSee(player);
+		var players = GetAllPlayers();
+		var visibleCardsByPlayer = new List<List<Card>>(players.Count);
+		var visibleCards = new HashSet<Card>();
 
-			foreach (var card in _cardStatManager.FilterCardsWithUpdates(player, visibleCards))
+		foreach (var player in players)
+		{
+			var playerVisibleCards = _cardVisibilityManager.GetListOfCardsPlayerCanSee(player);
+			visibleCardsByPlayer.Add(playerVisibleCards);
+			visibleCards.UnionWith(playerVisibleCards);
+		}
+
+		_cardStatManager.TrackChangesInCards(visibleCards);
+
+		for (var i = 0; i < players.Count; i++)
+		{
+			var player = players[i];
+			foreach (var card in _cardStatManager.FilterCardsWithUpdates(player, visibleCardsByPlayer[i]))
 			{
-				var cardUpdate = CardUpdateFactory.CreateUpdateEventForPlayer(player, card, card.m_CurrentCardCollection);
+				var cardUpdate =
+					CardUpdateFactory.CreateUpdateEventForPlayer(player, card, card.m_CurrentCardCollection);
 				DispatchSessionEvent(player, cardUpdate);
 			}
 		}

@@ -1,4 +1,6 @@
 extern alias HexGame;
+using System.Diagnostics;
+using Dingler.Game.Cards;
 using HexGame::Game.Shared;
 using HexGame::Game.Shared.Mechanics;
 using HexGame::Game.Shared.Mechanics.Abilities;
@@ -11,10 +13,12 @@ public sealed class GameOptionService
 {
 	private readonly ResourceId _attackingTroopsResourceId = new("00052130-32aa-c4f5-d01e-8522345bdb1c");
 	private readonly AuthoritativeSessionBase _session;
+	private readonly CardStatManager _cardStatManager;
 
-	public GameOptionService(AuthoritativeSessionBase session)
+	public GameOptionService(AuthoritativeSessionBase session, CardStatManager cardStatManager)
 	{
 		_session = session;
+		_cardStatManager = cardStatManager;
 	}
 
 	public PlayerOptionListSessionEventArgs CreateOptionListForPlayer(Player player)
@@ -280,7 +284,7 @@ public sealed class GameOptionService
 			abilityTemplate.AbilityTemplateId, abilityInstance);
 		var minTargets = _session.GetMinimumTargetCountsForAbility(sourceCard, player,
 			abilityTemplate.AbilityTemplateId, abilityInstance);
-
+		
 		var optionInstance = new OptionInstanceSessionEventArgs()
 		{
 			SessionId = _session.m_SessionId,
@@ -298,12 +302,34 @@ public sealed class GameOptionService
 		{
 			foreach (var target in kvp.Value)
 			{
+				var hiddenUpdates = new List<Card>();
+				foreach (var cardId in target.Value)
+				{
+					var card = _session.ResourceCache.GetCard(cardId);
+					
+					if (!card.CanPlayerSeeCard(player))
+						hiddenUpdates.Add(card);
+				}
+
+				if (hiddenUpdates.Count > 0)
+				{
+					_cardStatManager.TrackChangesInCards(hiddenUpdates);
+
+					foreach (var card in _cardStatManager.FilterCardsWithUpdates(player, hiddenUpdates))
+					{
+						var cardUpdate =
+							CardUpdateFactory.CreateUpdateEventForPlayer(player, card, card.m_CurrentCardCollection);
+						
+						_session.DispatchSessionEvent(player, cardUpdate);
+					}
+				}
+				
 				optionInstance.TargetInstances.Add(new TargetInstanceSessionEventArgs()
 				{
 					SessionId = _session.m_SessionId,
 					TargetId = target.Key,
 					TargetIndex = kvp.Key,
-					Targets = target.Value,
+					Targets = _session.SanatizeList(target.Value),
 					AdditionalTargets = new List<SessionCardId>()
 				});
 			}
