@@ -52,7 +52,7 @@ namespace Dingler.Game.Services
             if (removedDeckId != 0)
                 context.Decks.Remove(removedDeckId, out _);
 
-            var addedDeck = await _deckRepository.CreateDeckAsync(newDeck);
+            var addedDeck = await _deckRepository.CreateDeckAsync(newDeck).ConfigureAwait(false);
 
             var deckbitsString = CreateDeckBitsStringForNewDeck(addedDeck.Id, args);
 

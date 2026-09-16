@@ -1,17 +1,15 @@
 ﻿using Dingler.Data.Context;
 using Dingler.Data.Entities.GameData;
+using Dingler.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dingler.Data.Repositories
 {
-    public sealed class DeckRepository
+    public sealed class DeckRepository : BaseRepository<GameDataContext>
     {
-        private readonly IDbContextFactory<GameDataContext> _factory;
-
-        public DeckRepository(IDbContextFactory<GameDataContext> factory)
-        {
-            _factory = factory;
-        }
+        public DeckRepository(IDbContextFactory<GameDataContext> factory, SqliteWriter<GameDataContext> writer)
+            : base(factory, writer)
+        { }
 
         public async Task<Deck?> GetDeckById(int id)
         {
@@ -34,64 +32,57 @@ namespace Dingler.Data.Repositories
                 .ConfigureAwait(false);
         }
 
-        public async Task<Deck> CreateDeckAsync(Deck deck)
+        public Task<Deck> CreateDeckAsync(Deck deck)
         {
-            await using var context = await _factory.CreateDbContextAsync()
-                .ConfigureAwait(false);
-
-            context.Decks.Add(deck);
-            
-            await context.SaveChangesAsync()
-                .ConfigureAwait(false);
-
-            return deck;
-        }
-
-        public async Task UpdateDeckAsync(Deck deck)
-        {
-            await using var context = await _factory.CreateDbContextAsync()
-                .ConfigureAwait(false);
-
-            context.Decks.Update(deck);
-
-            await context.SaveChangesAsync()
-                .ConfigureAwait(false);
-        }
-
-        public async Task RemoveDeckAsync(int id)
-        {
-            await using var context = await _factory.CreateDbContextAsync()
-                .ConfigureAwait(false);
-
-            var deck = await context.Decks.FindAsync(id);
-
-            if (deck is null)
-                return;
-
-            context.Decks.Remove(deck);
-
-            await context.SaveChangesAsync()
-                .ConfigureAwait(false);
-        }
-
-        public async Task<ulong> RemoveDeckWithNameOwnedByPlayer(string name, ulong playerId)
-        {
-            await using var context = await _factory.CreateDbContextAsync().ConfigureAwait(false);
-
-            var deck = await context.Decks.Where(d => d.DeckName.ToLower().Equals(name.ToLower()) && d.PlayerProfileId == playerId).FirstOrDefaultAsync();
-
-            if (deck is null)
+            return EnqueueWriteAsync(async context =>
             {
-                return 0;
-            }
+                await context.Decks.AddAsync(deck);
+                return deck;
+            });
+        }
 
-            var deckId = (ulong)deck.Id;
+        public Task UpdateDeckAsync(Deck deck)
+        {
+            return EnqueueWriteAsync(context =>
+            {
+                context.Decks.Update(deck);
+                return Task.CompletedTask;
+            });
+        }
 
-            context.Decks.Remove(deck);
+        public Task RemoveDeckAsync(int id)
+        {
+            return EnqueueWriteAsync(async context =>
+            {
+                var deck = await context.Decks.FindAsync(id).ConfigureAwait(false);
+                
+                if (deck is null)
+                    return;
 
-            await context.SaveChangesAsync();
+                context.Decks.Remove(deck);
+            });
+        }
 
-            return deckId;
+        public Task<ulong> RemoveDeckWithNameOwnedByPlayer(string name, ulong playerId)
+        {
+
+            return EnqueueWriteAsync<ulong>(async context =>
+            {
+                var deck = await context.Decks
+                    .Where(d => d.DeckName.ToLower().Equals(name.ToLower()) && d.PlayerProfileId == playerId)
+                    .FirstOrDefaultAsync();
+
+                if (deck is null)
+                {
+                    return 0;
+                }
+
+                var deckId = (ulong)deck.Id;
+
+                context.Decks.Remove(deck);
+
+                return deckId;
+            });
         }
     }
 }

@@ -1,13 +1,10 @@
 ﻿using System.Runtime.Loader;
 using Dingler.Data.Context;
-using Dingler.Game;
 using Dingler.Game.CompositionRoot;
 using Dingler.Game.Configuration;
 using Dingler.Game.HarmonyPatches;
 using Dingler.Game.Protocol;
 using Dingler.Terminal.Frontend;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -41,23 +38,14 @@ internal static class Program
                         .ReadFrom.Configuration(context.Configuration)
                         .ReadFrom.Services(services);
                 })
-                .ConfigureWebHostDefaults(webBuilder =>
-                {
-                    webBuilder.Configure(app =>
-                    {
-                        app.UseRouting();
-                        app.UseEndpoints(endPoints =>
-                        {
-                            //endPoints.MapServerEndpoints();
-                        });
-                    });
-                })
                 .ConfigureServices(services =>
                 {
                     services.AddSingleton<AdminConsole>();
                 })
                 .BuildHex();
 
+            await host.StartAsync();
+            
             using (var scope = host.Services.CreateScope())
             {
                 var gameDataContext = scope.ServiceProvider.GetRequiredService<GameDataContext>();
