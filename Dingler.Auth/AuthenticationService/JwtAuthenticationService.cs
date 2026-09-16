@@ -3,6 +3,7 @@ using Dingler.Data.Context;
 using Dingler.Data.Entities.Credentials;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Dingler.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -10,14 +11,16 @@ namespace Dingler.Auth.AuthenticationService;
 
 public class JwtAuthenticationService : IAuthenticationService
 {
+    private readonly SqliteWriterQueue<HexCredentialsContext> _sqliteWriterQueue;
     private readonly HexCredentialsContext _context;
     private readonly RsaSecurityKey _signingKey;
     
     private const string ISSUER = "dingler-auth";
     private const string AUDIENCE = "dingler-game";
     
-    public JwtAuthenticationService(HexCredentialsContext context, RsaSecurityKey signingKey)
+    public JwtAuthenticationService(SqliteWriterQueue<HexCredentialsContext> sqliteWriterQueue, HexCredentialsContext context, RsaSecurityKey signingKey)
     {
+        _sqliteWriterQueue = sqliteWriterQueue;
         _context = context;
         _signingKey = signingKey;
     }
@@ -36,23 +39,17 @@ public class JwtAuthenticationService : IAuthenticationService
                     u.BannedUser
                 })
                 .FirstOrDefaultAsync().ConfigureAwait(false);
+            
             if (userCredential is null)
             {
                 // add in new user with password. In a real environment, this shouldn't be the functionality,
                 // but I don't want to make a bespoke registration page right now.
 
-                await RegisterAsync(request.User, request.Pass).ConfigureAwait(false);
+                var hashedPassword = BCrypt.Net.BCrypt.EnhancedHashPassword(request.Pass, 13);
+                await RegisterAsync(request.User, hashedPassword).ConfigureAwait(false);
 
-                userCredential = await _context.UserCredentials
-                .Include(u => u.BannedUser)
-                .Where(u => u.Email == request.User)
-                .Select(u => new
-                {
-                    u.Email,
-                    u.PasswordHash,
-                    u.BannedUser
-                })
-                .FirstAsync().ConfigureAwait(false);
+                userCredential = new
+                    { Email = request.User, PasswordHash = hashedPassword, BannedUser = (BannedUser?)null };
             }
 
             if (!BCrypt.Net.BCrypt.EnhancedVerify(request.Pass, userCredential.PasswordHash))
@@ -99,31 +96,28 @@ public class JwtAuthenticationService : IAuthenticationService
             return dict;
 	}
     
-    public async Task<bool> RegisterAsync(string email, string password)
+    public Task<bool> RegisterAsync(string email, string hashedPassword)
     {
-        var id = await _context.UserCredentials
-            .Where(u => u.Email == email)
-            .Select(u => u.Id)
-            .FirstOrDefaultAsync()
-            .ConfigureAwait(false);
-
-        if (id > 0)
-        {
-            return false;
-        }
-
-        var hashedPassword = BCrypt.Net.BCrypt.EnhancedHashPassword(password, 13);
-
         var newUser = new UserCredential
         {
             Email = email,
             PasswordHash = hashedPassword
         };
 
-        await _context.UserCredentials.AddAsync(newUser).ConfigureAwait(false);
+        return _sqliteWriterQueue.EnqueueWriteAsync(async context =>
+        {
+            var id = await context.UserCredentials
+                .Where(u => u.Email == email)
+                .Select(u => u.Id)
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
 
-        await _context.SaveChangesAsync().ConfigureAwait(false);
+            if (id > 0)
+                return false;
 
-        return true;
+            await context.UserCredentials.AddAsync(newUser).ConfigureAwait(false);
+            await context.SaveChangesAsync().ConfigureAwait(false);
+            return true;
+        });
     }
 }
