@@ -132,12 +132,19 @@ public sealed class HexRulesEngine : AuthoritativeSessionBase, IDisposable
 			DispatchSessionEvent(player, args);
 		}
 	}
-
+	
 	public override void DispatchSessionEvent(Player player, SessionEventArgs args)
 	{
-		DispatchToPlayer?.Invoke(player, args);
+		try
+		{
+			DispatchToPlayer?.Invoke(player, args);
+		}
+		catch (Exception ex)
+		{
+			_logger?.LogError(ex, "Dropped {EventType} for player {PlayerId}",
+				args.GetType().Name, player.m_PlayerId);
+		}
 	}
-
 	public override bool SubmitTransaction(Transaction transaction)
 	{
 		m_TransactionQueue.Enqueue(transaction);
