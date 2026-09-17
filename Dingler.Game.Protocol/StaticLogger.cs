@@ -2,7 +2,7 @@
 
 // To only be used in static classes
 
-namespace Dingler.Game;
+namespace Dingler.Game.Protocol;
 
 public static class StaticLogger
 {

@@ -1,10 +1,11 @@
 ﻿extern alias HexGame;
 using HarmonyLib;
 using System.Reflection;
+using Dingler.Game.Protocol;
 
 namespace Dingler.Game.HarmonyPatches
 {
-                    public static class HarmonyPatcher
+    public static class HarmonyPatcher
     {
         private static readonly Harmony _harmony = new Harmony("Patch");
         public static void Patch()

@@ -1,4 +1,5 @@
 ﻿extern alias HexGame;
+using Dingler.Game.Protocol;
 using HarmonyLib;
 
 namespace Dingler.Game.HarmonyPatches
