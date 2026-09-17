@@ -370,7 +370,7 @@ public sealed class Tournament : IRegisterable, IJoinable, IDisposable
 
 	public Task ReconnectAsync(SessionContext context)
 	{
-		return Task.CompletedTask;
+		return SendFullUpdateAsync(context, IsWaitingRoom, CancellationToken.None);
 	}
 
 	public void Dispose()

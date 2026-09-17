@@ -13,7 +13,7 @@ public sealed class TryReconnectToTournamentRequestHandler
 	: IAsyncRequestHandler<TryReconnectionToDisconnectedTournamentRequestArgs,
 		TryReconnectionToDisconnectedTournamentResponse>
 {
-	private TournamentManager _tournamentManager;
+	private readonly TournamentManager _tournamentManager;
 	public TryReconnectToTournamentRequestHandler(TournamentManager tournamentManager)
 	{
 		_tournamentManager = tournamentManager;
@@ -22,9 +22,18 @@ public sealed class TryReconnectToTournamentRequestHandler
 	public async Task<TryReconnectionToDisconnectedTournamentResponse> HandleRequestAsync(SessionContext context,
 		TryReconnectionToDisconnectedTournamentRequestArgs request, CancellationToken token)
 	{
-		if (!await _tournamentManager.ReconnectAsync(context)) 
-			return new TryReconnectionToDisconnectedTournamentResponse();
+		if (!await _tournamentManager.ReconnectAsync(context) ||
+		    !_tournamentManager.TryGetTournament(context.CurrentTournamentId, out var tournament))  
+			return new TryReconnectionToDisconnectedTournamentResponse()
+			{
+				ErrorMessage = "No tournament",
+				Error = ETryReconnectionToDisconnectedTournamentError.Ok,
+			};
 
+		var tournamentInfo = await tournament.GetInfoAsync();
+
+		context.TrySendMessageToClient(new TournamentInfoEventArgs(tournamentInfo));
+		
 		return new TryReconnectionToDisconnectedTournamentResponse();
 	}
 }

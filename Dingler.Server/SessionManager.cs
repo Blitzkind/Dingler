@@ -19,13 +19,24 @@ public sealed class SessionManager
 
 	public bool TryRemoveSession(SessionContext context)
 	{
-		return _sessionsById.Remove(context.SessionId, out _) |
-		       (context.UserName is null || _sessionsByUsername.Remove(context.UserName, out _));
+		var removedById = _sessionsById.TryRemove(context.SessionId, out _);
+
+		if (context.UserName is null)
+			return removedById;
+
+		if (_sessionsByUsername.TryGetValue(context.UserName, out var current) &&
+		    ReferenceEquals(current, context))
+		{
+			return _sessionsByUsername.TryRemove(context.UserName, out _) || removedById;
+		}
+
+		return removedById;
 	}
-	
+
 	public bool TryLinkUserToSession(string username, SessionContext context)
 	{
-		return _sessionsByUsername.TryAdd(username, context);
+		_sessionsByUsername[username] = context;
+		return true;
 	}
 
 	public bool TryGetUserSession(string username, [MaybeNullWhen(false)] out SessionContext context)

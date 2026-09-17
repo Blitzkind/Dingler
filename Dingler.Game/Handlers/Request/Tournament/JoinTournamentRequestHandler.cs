@@ -29,6 +29,7 @@ public sealed class JoinTournamentRequestHandler : IAsyncRequestHandler<Tourname
 		if (result)
 		{
 			context.CurrentTournamentId = request.TournamentId;
+			_tournamentManager.TrackPlayer(context.UserName!, request.TournamentId);
 		}
 	}
 }
