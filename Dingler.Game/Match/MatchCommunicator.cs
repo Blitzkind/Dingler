@@ -34,7 +34,7 @@ public class MatchCommunicator
 		match.GameEnded -= OnGameEnded;
 		match.PlayerLeftToSideboard -= OnPlayerLeftToSideboard;
 		match.PlayerLeftToMainLobby -= OnPlayerLeftToMainLobby;
-		match.PlayerForfeited += OnPlayerForfeited;
+		match.PlayerForfeited -= OnPlayerForfeited;
 	}
 
 	private void OnMatchStarted(TournamentMatch tournamentMatch)
