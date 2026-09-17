@@ -1,7 +1,6 @@
 extern alias HexGame;
-using System.Diagnostics;
-using Card = HexGame::Game.Shared.Mechanics.Card;
-using Player = HexGame::Game.Shared.Player;
+using HexGame::Game.Shared.Mechanics;
+using HexGame::Game.Shared;
 
 namespace Dingler.Game.Cards;
 
@@ -39,7 +38,7 @@ public sealed class CardStatManager
 			list.Add(card);
 			playerSnapshots[card] = snapshot;
 		}
-
+		
 		return list;
 	}
 }
