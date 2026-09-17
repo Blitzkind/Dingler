@@ -24,22 +24,24 @@ public sealed class TryReconnectToGameRequestHandler : IRequestHandler<TryReconn
 			SessionState = null
 		};
 	}
-	
+
 	public TryReconnectionToDisconnectedGameResponse HandleRequest(SessionContext context,
 		TryReconnectionToDisconnectedGameRequestArgs request)
 	{
-		if (!_gameManager.TryGetGameForPlayer(context.UserName!, out var session))
-			return _nullResponse;
-
-		return new TryReconnectionToDisconnectedGameResponse()
+		if (context.UserName is null ||
+		    !_gameManager.TryGetGameForPlayer(context.UserName, out var match) ||
+		    match.IsGameEnded ||
+		    !match.TryGetPlayerId(context.UserName, out var playerId))
 		{
-			SessionState = new SessionState()
-			{
-				MaximumPlayerCount = 2,
-				MinimumPlayerCount = 2,
-				JoinInsteadOfReconnect = false,
-				SessionName = $"game-4",
-			}
+			return _nullResponse;
+		}
+
+		var setup = match.BuildGameSetupResponse(playerId);
+
+		return new TryReconnectionToDisconnectedGameResponse
+		{
+			SessionState = setup.SessionState,
+			DeckID = setup.DeckId
 		};
 	}
 }

@@ -218,8 +218,14 @@ public class TournamentManager : IAsyncStartupService
 			return false;
 		}
 
+		context.CurrentTournamentId = tournamentId;
 		await tournament.ReconnectAsync(context);
 		return true;
+	}
+
+	public bool TryGetTournamentPlayerIsIn(string username, [MaybeNullWhen(false)] out ulong tournamentId)
+	{
+		return _playerMap.TryGetValue(username, out tournamentId);
 	}
 
 	public bool TryGetTournament(ulong id, [MaybeNullWhen(false)] out Tournament tournament)

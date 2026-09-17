@@ -675,8 +675,50 @@ public sealed class HexRulesEngine : AuthoritativeSessionBase, IDisposable
 			SessionId = m_SessionId
 		};
 	}
-	
-		
+
+	public List<SessionEventArgs> BuildResyncEvents(Player player)
+	{
+		var events = new List<SessionEventArgs>();
+
+		foreach (var other in m_Players)
+			events.Add(BuildPlayerUpdate(other));
+
+		foreach (var card in GetAllCards())
+			events.Add(CardUpdateFactory.CreateUpdateEventForPlayer(player, card, card.m_CurrentCardCollection));
+
+		return events;
+	}
+
+	public EPriorityContext GetPriorityContext()
+	{
+		var activePlayer = GetActivePlayer();
+		var priorityPlayer = GetPriorityPlayer();
+		if (activePlayer is null || priorityPlayer is null)
+			return EPriorityContext.Unknown;
+
+		if (!m_Chain.IsEmpty)
+			return EPriorityContext.ResolveTopOfChain;
+
+		if (!priorityPlayer.HasStop(activePlayer, CurrentTurnPhase))
+			return EPriorityContext.Unknown;
+
+		var isActive = activePlayer.m_PlayerId == priorityPlayer.m_PlayerId;
+		return CurrentTurnPhase switch
+		{
+			ETurnPhases.Ready => isActive ? EPriorityContext.Ready : EPriorityContext.OpponentsReady,
+			ETurnPhases.FirstMainPhase => !activePlayer.CanDelareAttack()
+				? (isActive ? EPriorityContext.ProcedeToSecondMain : EPriorityContext.ProcedeToOpponentsSecondMain)
+				: (isActive ? EPriorityContext.ProcedeToCombat : EPriorityContext.ProcedeToOpponentsCombat),
+			ETurnPhases.SecondMainPhase => activePlayer.HandLargerThanMaximumHandSize()
+				? EPriorityContext.Normal
+				: (isActive ? EPriorityContext.ProceedToEndTurn : EPriorityContext.ProceedToOpponentsEndTurn),
+			ETurnPhases.DeclareAttackPriorityWindow => isActive ? EPriorityContext.ProcedeToBlockers : EPriorityContext.ProcedeToMyBlockers,
+			ETurnPhases.DeclareDefensePriorityWindow => EPriorityContext.ResolveCombat,
+			ETurnPhases.EndPhase => isActive ? EPriorityContext.EndPhase : EPriorityContext.EndOpponentsPhase,
+			_ => EPriorityContext.Normal
+		};
+	}
+
 	private void SendChangedCardUpdates()
 	{
 		var players = GetAllPlayers();

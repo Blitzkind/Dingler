@@ -4,6 +4,7 @@ using Dingler.Game;
 using Dingler.Game.CompositionRoot;
 using Dingler.Game.Configuration;
 using Dingler.Game.HarmonyPatches;
+using Dingler.Game.Protocol;
 using Dingler.Terminal.Frontend;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;

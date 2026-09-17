@@ -4,6 +4,7 @@ using Dingler.Server;
 using Dingler.Game.Cards;
 using Dingler.Game.GameObjects;
 using HexGame::Game.Shared;
+using HexGame::Game.Shared.Mechanics;
 using HexGame::Game.Shared.Mechanics.Transactions;
 using HexGame::Game.Shared.Network.GameSession;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,8 @@ public class HexGameWrapper : IDisposable
 	private readonly ILogger<HexGameWrapper>? _logger;
 	private readonly CancellationToken _cancellationToken;
 	private readonly ConcurrentDictionary<string, bool> _leaveChecks;
+	private readonly Dictionary<Player, Dictionary<object, (int eventId, byte[] eventData)>> _eventHistory;
+	private readonly ConcurrentQueue<UID> _pendingReconnects;
 
 	public SessionStateEncounterData EncounterData => _gameSession.EncounterData;
 	
@@ -53,6 +56,8 @@ public class HexGameWrapper : IDisposable
 		_gameSession.FlushReady += OnFlushReady;
 		_cancellationToken = cancellationToken;
 		_leaveChecks = new ConcurrentDictionary<string, bool>();
+		_eventHistory = new Dictionary<Player, Dictionary<object, (int eventId, byte[] eventData)>>();
+		_pendingReconnects = new ConcurrentQueue<UID>();
 	}
 	
 	public bool IsGameEnded { get; private set; }
@@ -181,6 +186,7 @@ public class HexGameWrapper : IDisposable
 	
 	private void OnFlushReady()
 	{
+		ProcessPendingReconnects();
 
 		foreach (var player in _gameSession.GetAllPlayers())
 		{
@@ -253,16 +259,255 @@ public class HexGameWrapper : IDisposable
 			}
 		}
 	}
-	
+
+	public bool TryGetPlayerId(string username, out UID playerId)
+	{
+		var player = _gameSession.GetAllPlayers()
+			.FirstOrDefault(p => p.m_ChampionCard?.GetName() == username);
+
+		playerId = player?.m_PlayerId ?? UID.Invalid;
+		return player is not null;
+	}
+
+	public void ReconnectPlayer(UID playerId)
+	{
+		_pendingReconnects.Enqueue(playerId);
+		_gameSession.ProcessWork();
+	}
+
+	private void ProcessPendingReconnects()
+	{
+		while (_pendingReconnects.TryDequeue(out var playerId))
+		{
+			var player = _gameSession.GetPlayer(playerId);
+			if (player is null)
+				continue;
+
+			var name = player.m_ChampionCard?.GetName();
+			if (string.IsNullOrEmpty(name) || !_sessionManager.TryGetUserSession(name, out var session))
+				continue;
+
+			_readyPlayers[player] = 1;
+
+			if (_eventQueues.TryGetValue(player, out var queue))
+				queue.Clear();
+
+			foreach (var other in _gameSession.GetAllPlayers())
+			{
+				if (other.m_PlayerId == playerId)
+					continue;
+
+				session.TrySendMessageToClient(new PlayerAddedEventArgs
+				{
+					RoutingPlayerId = playerId,
+					PlayerState = new PlayerState
+					{
+						PlayerId = other.m_PlayerId,
+						PlayerPosition = other.m_PlayerPosition
+					}
+				});
+			}
+
+			var chainEvents = new List<(int eventId, byte[] eventData)>();
+			var stateEvents = new List<(int eventId, byte[] eventData)>();
+
+			if (_eventHistory.TryGetValue(player, out var recorded))
+			{
+				foreach (var entry in recorded)
+				{
+					if (TryGetChainAbilityEvent(entry.Key, out var abilityInstanceId))
+					{
+						if (_gameSession.Chain.ContainsAbility(abilityInstanceId))
+							chainEvents.Add(entry.Value);
+						continue;
+					}
+
+					stateEvents.Add(entry.Value);
+				}
+			}
+
+			session.TrySendMessageToClient(new SessionSyncEventEventArgs
+			{
+				RoutingPlayerId = playerId,
+				SessionArgs = BuildResyncPacket(player, stateEvents, _gameSession.BuildResyncEvents(player))
+			});
+
+			var priorityPlayer = _gameSession.GetPriorityPlayer();
+			var activePlayer = _gameSession.GetActivePlayer();
+
+			// These are sent as separate sync packets so the client applies them on
+			// separate frames: the phase first (its handler clears the chain), then the
+			// chain, then the priority green light. The pass button mode is decided once
+			// when the priority context changes and must see a populated ChainView.
+			SendSessionEvents(session, player, [
+				new TurnPhaseUpdatedSessionEventArgs
+				{
+					SessionId = _gameSession.m_SessionId,
+					ActivePlayerId = activePlayer?.m_PlayerId ?? UID.Invalid,
+					PriorityPlayerId = priorityPlayer?.m_PlayerId ?? UID.Invalid,
+					TurnPhase = _gameSession.CurrentTurnPhase,
+					PriorityPlayerChessTimerElapsed = priorityPlayer is null ? 0 : (long)priorityPlayer.GetChessTimerElapsedTime().TotalSeconds
+				}
+			]);
+
+			if (chainEvents.Count > 0)
+			{
+				SendSessionEvents(session, player,
+					chainEvents.Select(e => SessionEventArgs.BuildArgs(e.eventId, e.eventData)));
+			}
+
+			if (priorityPlayer is not null)
+			{
+				SendSessionEvents(session, player, [
+					new GreenLightSessionEventArgs
+					{
+						SessionId = _gameSession.m_SessionId,
+						PlayerId = priorityPlayer.m_PlayerId,
+						Context = _gameSession.GetPriorityContext()
+					}
+				]);
+
+				if (priorityPlayer == player)
+					_gameSession.SendPlayerOptions(player);
+			}
+
+			if (_eventQueues.TryGetValue(player, out var reconnectQueue))
+			{
+				reconnectQueue.Enqueue((53, new ReconnectDoneSessionEventArgs
+				{
+					SessionId = _gameSession.m_SessionId
+				}.ToByteArray()));
+			}
+
+			_logger?.LogInformation("Player {Player} resynced into match {MatchId}", name, Id);
+		}
+	}
+
+	private void SendSessionEvents(SessionContext session, Player player, IEnumerable<SessionEventArgs> events)
+	{
+		var packet = new NetworkPacketSessionEventArgs
+		{
+			PlayerId = player.m_PlayerId,
+			SessionId = _gameSession.m_SessionId
+		};
+
+		var any = false;
+		foreach (var e in events)
+		{
+			packet.EventIds.Add(e.Class);
+			packet.EventData.Add(e.ToByteArray());
+			any = true;
+		}
+
+		if (!any)
+			return;
+
+		session.TrySendMessageToClient(new SessionSyncEventEventArgs
+		{
+			RoutingPlayerId = player.m_PlayerId,
+			SessionArgs = packet
+		});
+	}
+
+	private NetworkPacketSessionEventArgs BuildResyncPacket(Player player,
+		IEnumerable<(int eventId, byte[] eventData)> recorded,
+		IReadOnlyList<SessionEventArgs> live)
+	{
+		var packet = new NetworkPacketSessionEventArgs
+		{
+			PlayerId = player.m_PlayerId,
+			SessionId = _gameSession.m_SessionId
+		};
+
+		var events = new List<(int eventId, byte[] eventData)>(recorded);
+		foreach (var e in live)
+			events.Add((e.Class, e.ToByteArray()));
+
+		foreach (var e in events.OrderBy(e => ResyncOrderOf(e.eventId)))
+		{
+			packet.EventIds.Add(e.eventId);
+			packet.EventData.Add(e.eventData);
+		}
+
+		return packet;
+	}
+
+	private static int ResyncOrderOf(int eventClass) => eventClass switch
+	{
+		ReconnectEventInfo.GAME_STARTED => 0,
+		ReconnectEventInfo.PLAYER_UPDATED => 1,
+		ReconnectEventInfo.CARD_UPDATED => 2,
+		ReconnectEventInfo.DECK_CREATED => 3,
+		ReconnectEventInfo.EQUIPMENT_SET => 3,
+		ReconnectEventInfo.CHAMPION_CARD_PLAYED => 4,
+		ReconnectEventInfo.RESOURCE_CARD_PLAYED => 5,
+		ReconnectEventInfo.PLAYER_MULLIGANED_HAND => 6, 
+		ReconnectEventInfo.PLAYER_ACCEPTED_HAND => 6, 
+		ReconnectEventInfo.PLAYER_STATE_MODIFIED => 7,
+		ReconnectEventInfo.TURN_PHASE_UPDATED => 8, 
+		ReconnectEventInfo.GREEN_LIGHT => 9,
+		ReconnectEventInfo.COMBAT_LISTING => 10,
+		ReconnectEventInfo.PLAYER_OPTION_LIST => 11,
+		ReconnectEventInfo.CHESS_TIMER_UPDATED => 12, 
+		ReconnectEventInfo.ACTIVE_CHESS_TIMER => 12,
+		_ => 13
+	};
+
 	private void OnDispatchEventToPlayer(Player player, SessionEventArgs args)
 	{
 		if (!_eventQueues.TryGetValue(player, out var queue))
 		{
-			queue = new Queue<(int eventId, byte[] data)>();
+			queue = new Queue<(int eventId, byte[] eventData)>();
 			_eventQueues[player] = queue;
 		}
 
-		queue.Enqueue((args.Class, args.ToByteArray()));
+		var data = (args.Class, args.ToByteArray());
+		queue.Enqueue(data);
+
+		var key = ResyncKey(args);
+		if (key is null)
+			return;
+
+		if (!_eventHistory.TryGetValue(player, out var history))
+		{
+			history = new Dictionary<object, (int eventId, byte[] eventData)>();
+			_eventHistory[player] = history;
+		}
+
+		history[key] = data;
+	}
+
+	private static object? ResyncKey(SessionEventArgs args)
+	{
+		return args switch
+		{
+			GameStartedSessionEventArgs => (typeof(GameStartedSessionEventArgs), (object?)null),
+			AbilityPushedOnChainSessionEventArgs chain => (typeof(AbilityPushedOnChainSessionEventArgs), (object?)chain.AbilityInstanceId),
+			DeckCreatedSessionEventArgs d => (typeof(DeckCreatedSessionEventArgs), (object?)d.PlayerId),
+			EquipmentSetSessionEventArgs e => (typeof(EquipmentSetSessionEventArgs), (object?)e.PlayerId),
+			ChampionCardPlayedSessionEventArgs ch => (typeof(ChampionCardPlayedSessionEventArgs), (object?)ch.PlayerId),
+			PlayerMulliganedHandSessionEventArgs m => (typeof(PlayerMulliganedHandSessionEventArgs), (object?)m.PlayerId),
+			PlayerAcceptedStartingHandSessionEventArgs a => (typeof(PlayerAcceptedStartingHandSessionEventArgs), (object?)a.PlayerId),
+			PlayerStateModifiedSessionEventArgs ps => (typeof(PlayerStateModifiedSessionEventArgs), (object?)ps.PlayerId),
+			CombatListingSessionEventArgs => (typeof(CombatListingSessionEventArgs), (object?)null),
+			ChessTimerUpdatedSessionEventArgs ct => (typeof(ChessTimerUpdatedSessionEventArgs), (object?)ct.PlayerId),
+			ActiveChessTimerPlayerSessionEventArgs ac => (typeof(ActiveChessTimerPlayerSessionEventArgs), (object?)ac.PlayerId),
+			_ => null
+		};
+	}
+
+	private static bool TryGetChainAbilityEvent(object key, out long abilityInstanceId)
+	{
+		if (key is ValueTuple<Type, object> tuple &&
+		    tuple.Item1 == typeof(AbilityPushedOnChainSessionEventArgs) &&
+		    tuple.Item2 is long id)
+		{
+			abilityInstanceId = id;
+			return true;
+		}
+
+		abilityInstanceId = 0;
+		return false;
 	}
 
 	public void Dispose()

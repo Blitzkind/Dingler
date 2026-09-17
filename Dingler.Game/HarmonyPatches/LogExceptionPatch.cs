@@ -1,4 +1,5 @@
 using System.Text;
+using Dingler.Game.Protocol;
 using HarmonyLib;
 
 namespace Dingler.Game.HarmonyPatches;

@@ -1,4 +1,5 @@
 extern alias HexGame;
+using Dingler.Game.Protocol;
 using HarmonyLib;
 using HexGame::Game.Shared;
 using HexGame::Game.Shared.Mechanics.GameActions;
