@@ -1,6 +1,7 @@
 ﻿extern alias HexGame;
 
 using HexGame::Game.Shared.Mechanics;
+using HexGame::Reckoning.Game;
 
 namespace Dingler.Game.Cards
 { 
@@ -38,6 +39,17 @@ namespace Dingler.Game.Cards
             {
                 hash = HashCode.Combine(hash, abilityId.GetHashCode());
             }
+
+            var counters = new List<KeyValuePair<CardCounterTemplate, int>>(card.Counters);
+            counters.Sort(static (a, b) => a.Key.m_CardCounterId.guid.CompareTo(b.Key.m_CardCounterId.guid));
+
+            foreach (var counter in counters)
+            {
+                var guid = counter.Key.m_CardCounterId.guid;
+                var value = counter.Value;
+                hash = HashCode.Combine(hash, guid, value);
+            }
+            
             return hash;
         }
 
