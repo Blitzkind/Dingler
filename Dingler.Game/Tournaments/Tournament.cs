@@ -37,6 +37,7 @@ public sealed class Tournament : IRegisterable, IJoinable, IDisposable
 	public event Action<Tournament, TournamentRoomState, string>? SendPlayerToSideboard;
 	public event Action<Tournament, TournamentRoomState, string>? SendPlayerToMainLobby;
 	public event Action<Tournament, TournamentRoomState, string>? SendPlayerToTournamentLobby;
+	public event Action<TournamentMatch?, string>? PlayerForfeits;
 	public event Action<Tournament>? Cleanup;
 	public bool IsFull { get; private set; }
 	public bool IsFinished { get; private set; }
@@ -410,10 +411,12 @@ public sealed class Tournament : IRegisterable, IJoinable, IDisposable
 
 	public bool TryForfeitMatch(string username)
 	{
-		if (!_matchManager.TryGetMatchForPlayer(username, out var match))
-			return false;
+		_matchManager.TryGetMatchForPlayer(username, out var match);
+
+		match?.PlayerForfeitsMatch(username);
 		
-		match.PlayerForfeitsMatch(username);
+		PlayerForfeits?.Invoke(match, username);
+
 		return true;
 	}
 	

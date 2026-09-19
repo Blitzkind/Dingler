@@ -99,11 +99,6 @@ public class MatchCommunicator
 
 	private void OnPlayerForfeited(TournamentMatch tournamentMatch, string forfeiter)
 	{
-		var winner = tournamentMatch.GetPlayersInMatch().FirstOrDefault(p => p != forfeiter);
-		
-		if (winner is null || !_sessionManager.TryGetUserSession(winner, out var session))
-			return;
 
-		session.TrySendMessageToClient(new GotoLobbyEventArgs(tournamentMatch.TournamentInfo.TournamentID));
 	}
 }

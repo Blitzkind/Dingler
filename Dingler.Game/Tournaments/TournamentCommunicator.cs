@@ -1,4 +1,5 @@
 extern alias HexGame;
+using Dingler.Game.Match;
 using Dingler.Server;
 using Dingler.Game.Protocol.Rooms.Models;
 using Dingler.Game.States;
@@ -32,6 +33,7 @@ public sealed class TournamentCommunicator : IDisposable
 		tournament.TournamentComplete += OnTournamentComplete;
 		tournament.SendPlayerToSideboard += OnSendPlayerToSideboard;
 		tournament.PlayerRequestsFullUpdate += OnPlayerRequestsFullUpdate;
+		tournament.PlayerForfeits += OnPlayerForfeits;
 	}
 
 	public void UnregisterTournamentMethods(Tournament tournament)
@@ -49,6 +51,7 @@ public sealed class TournamentCommunicator : IDisposable
 		tournament.TournamentComplete -= OnTournamentComplete;
 		tournament.SendPlayerToSideboard -= OnSendPlayerToSideboard;
 		tournament.PlayerRequestsFullUpdate -= OnPlayerRequestsFullUpdate;
+		tournament.PlayerForfeits -= OnPlayerForfeits;
 	}
 	
 	private void OnPlayerRegistered(Tournament tournament, TournamentRoomState state, string playerUsername)
@@ -215,6 +218,16 @@ public sealed class TournamentCommunicator : IDisposable
 	private ulong GetPlayerIndex(TournamentRoomState state, string username)
 	{
 		return (ulong)state.TournamentInfo.Players.FindIndex(p => p.Name == username);
+	}
+
+	private void OnPlayerForfeits(TournamentMatch? match, string username)
+	{
+		var winner = match?.GetPlayersInMatch().FirstOrDefault(p => p != username);
+		
+		if (winner is null || !_sessionManager.TryGetUserSession(winner, out var session))
+			return;
+
+		session.TrySendMessageToClient(new GotoLobbyEventArgs(match!.TournamentInfo.TournamentID));
 	}
 
 	public void Dispose()
