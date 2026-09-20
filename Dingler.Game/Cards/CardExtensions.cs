@@ -1,8 +1,6 @@
 extern alias HexGame;
-using Card = HexGame::Game.Shared.Mechanics.Card;
-using CardRepresentation = HexGame::Game.Shared.CardRepresentation;
-using CardUpdatedSessionEventArgs = HexGame::Game.Shared.CardUpdatedSessionEventArgs;
-using Player = HexGame::Game.Shared.Player;
+using HexGame::Game.Shared.Mechanics;
+using HexGame::Game.Shared;
 
 namespace Dingler.Game.Cards;
 
@@ -18,7 +16,6 @@ public static class CardExtensions
 		if (isCardFaceUp || card.m_ControllingPlayer.Equals(player))
 		{
 			representation = new CardRepresentation(card);
-			representation.Defense = card.CurrentHealthValue;
 			var context = card.GetCardContext();
 
 			foreach (var intAttr in context.GetCurrentIntAttrs())
@@ -41,12 +38,31 @@ public static class CardExtensions
 				}
 			}
 
+			var ctx = card.GetCardContext();
+			representation.Armor = ctx.Get(IntAttrs.Armor);
+			representation.CurrentArmor = representation.Armor - card.Get(TACAttrs.PermanentData, IntAttrs.ArmorUsed);
+			representation.Rage = ctx.Get(IntAttrs.Rage);
+			representation.DMult = ctx.Get(IntAttrs.DamageMultiplier, 1);
+			representation.CDMult = ctx.Get(IntAttrs.CombatDamageMultiplier, 1);
+			representation.Lethal = ctx.GetBool(IntAttrs.Lethal);
+			representation.Feral = ctx.GetBool(IntAttrs.Feral);
+			representation.SubType = card.CurrentSubtype;
+			representation.DamageShield = card.HasDamageShield;
+			representation.Defense = card.CurrentHealthValue;
+
+			foreach (var kvp in card.CardIntegerVariables)
+			{
+				representation.IntegerVariables.Add(kvp.Key, kvp.Value);
+			}
+			
+			representation.AffectingAbilities.AddRange(card.m_Session.GetAffectingAbilities(card.m_SessionCardId));
+			representation.CardType = card.CurrentType;
 		}
 		else
 		{
 			representation = CardRepresentation.BlankCard;
 		}
-
+		
 		var update = representation.ConvertToUpdateEvent(!isCardFaceUp);
 
 		update.SessionCardId = card.m_SessionCardId;
