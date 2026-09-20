@@ -51,7 +51,6 @@ public sealed class Actor<TState>
 			{
 				tcs.SetCanceled(e.CancellationToken);
 			}
-
 			catch (Exception e)
 			{
 				tcs.SetException(e);
@@ -78,7 +77,6 @@ public sealed class Actor<TState>
 			{
 				tcs.SetCanceled(e.CancellationToken);
 			}
-
 			catch (Exception e)
 			{
 				tcs.SetException(e);
@@ -104,7 +102,6 @@ public sealed class Actor<TState>
 			{
 				tcs.SetCanceled(e.CancellationToken);
 			}
-
 			catch (Exception e)
 			{
 				tcs.SetException(e);

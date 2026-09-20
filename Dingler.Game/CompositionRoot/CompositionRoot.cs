@@ -12,6 +12,7 @@ using Dingler.Game.GameObjects;
 using Dingler.Game.GameObjects.TrackedGameZones;
 using Dingler.Game.Games;
 using Dingler.Game.Protocol;
+using Dingler.Game.Protocol.Chat;
 using Dingler.Game.Protocol.Middleware;
 using Dingler.Game.Services;
 using Dingler.Game.Tournaments;
@@ -65,6 +66,8 @@ namespace Dingler.Game.CompositionRoot
                 sc
                     .AddScopedAsyncStartupService<TournamentManager>()
                     .AddScopedAsyncStartupService<SessionService>()
+                    .AddScoped<ChatManager>()
+                    .AddScoped<ChatRoomFactory>()
                     .AddScoped<TournamentCommunicator>()
                     .AddScoped<DeckRepository>()
                     .AddScoped<AccountRepository>()

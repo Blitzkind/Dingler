@@ -51,7 +51,7 @@ public sealed class DecodeMiddleware : IMiddleware<RequestContext>
 			context.RequestObject = ChatMessageConverter.ParseChatRequest(rawChatRequest);
 
 			if (context.RequestObject is null)
-				await context.SessionContext.SendMessageToClientAsync(rawChatRequest, token);
+				context.RequestObject = rawChatRequest;
 		}
 		else
 		{
