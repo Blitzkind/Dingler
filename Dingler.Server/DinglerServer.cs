@@ -1,4 +1,5 @@
-﻿using System.Net.Sockets;
+﻿extern alias HexGame;
+using System.Net.Sockets;
 using Dingler.Server.Abstractions;
 using Dingler.Server.Pipeline;
 using Microsoft.Extensions.Logging;

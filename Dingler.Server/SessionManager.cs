@@ -8,6 +8,8 @@ public sealed class SessionManager
 	private readonly ConcurrentDictionary<Guid, SessionContext> _sessionsById = new();
 	private readonly ConcurrentDictionary<string, SessionContext> _sessionsByUsername = new();
 
+	public event Action<SessionContext>? SessionDisconnected;
+
 	public bool TryCreateSession(out SessionContext session)
 	{
 		var sessionId = Guid.NewGuid();
@@ -23,7 +25,9 @@ public sealed class SessionManager
 
 		if (context.UserName is null)
 			return removedById;
-
+		
+		SessionDisconnected?.Invoke(context);
+		
 		if (_sessionsByUsername.TryGetValue(context.UserName, out var current) &&
 		    ReferenceEquals(current, context))
 		{
