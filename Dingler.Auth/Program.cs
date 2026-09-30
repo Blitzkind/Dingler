@@ -3,6 +3,7 @@ using Dingler.Auth.AuthenticationService;
 using Dingler.Auth.Endpoints;
 using Dingler.Data.Configuration;
 using Dingler.Data.Context;
+using Dingler.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -35,20 +36,15 @@ namespace Dingler.Auth
             var connectionString = SqliteConnection.ResolveDataSource(
                 builder.Configuration.GetConnectionString("HexCredentials"));
             SqliteConnection.EnsureDirectoryExists(connectionString);
-            
+
             builder.Services
-                .AddDbContext<HexCredentialsContext>(options =>
-                {
-                    options.UseSqlite(connectionString);
-                });
+                .AddSqliteDbContext<HexCredentialsContext>(connectionString);
 
             var signingKey = LoadOrCreateSigningKey(Path.Combine(builder.Environment.ContentRootPath, "signing.key"));
-            
+
             builder.Services
                 .AddScoped<IAuthenticationService, JwtAuthenticationService>()
                 .AddSingleton(signingKey);
-
-
             
             var app = builder.Build();
 

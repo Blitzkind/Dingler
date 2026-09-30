@@ -1,12 +1,14 @@
 ﻿extern alias HexGame;
 using System.Net;
 using System.Net.Sockets;
+using Dingler.Data;
 using Dingler.Server;
 using Dingler.Server.Abstractions;
 using Dingler.Server.Startup;
 using Dingler.Data.Configuration;
 using Dingler.Data.Context;
 using Dingler.Data.Repositories;
+using Dingler.Data.Sqlite;
 using Dingler.Game.Configuration;
 using Dingler.Game.GameObjects;
 using Dingler.Game.GameObjects.TrackedGameZones;
@@ -18,7 +20,6 @@ using Dingler.Game.Services;
 using Dingler.Game.Tournaments;
 using HexGame::Game.Shared;
 using HexGame::Game.Shared.Mechanics;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -62,10 +63,13 @@ namespace Dingler.Game.CompositionRoot
                 var connectionString =
                     SqliteConnection.ResolveDataSource(hb.Configuration.GetConnectionString("GameData"));
                 SqliteConnection.EnsureDirectoryExists(connectionString);
-                
+
                 sc
+                    .AddSqliteDbContext<GameDataContext>(connectionString)
                     .AddScopedAsyncStartupService<TournamentManager>()
                     .AddScopedAsyncStartupService<SessionService>()
+                    .AddSingleton<SqliteWriterQueue<GameDataContext>>()
+                    .AddSingleton<SqliteWriterQueue<HexCredentialsContext>>()
                     .AddScoped<ChatManager>()
                     .AddScoped<ChatRoomFactory>()
                     .AddScoped<TournamentCommunicator>()
@@ -87,10 +91,6 @@ namespace Dingler.Game.CompositionRoot
                         }
 
                         return new TcpListener(ip, port);
-                    })
-                    .AddDbContextFactory<GameDataContext>(options =>
-                    {
-                        options.UseSqlite(connectionString ?? "");
                     });
             });
 
