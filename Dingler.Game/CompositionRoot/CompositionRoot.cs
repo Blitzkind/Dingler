@@ -1,6 +1,7 @@
 ﻿extern alias HexGame;
 using System.Net;
 using System.Net.Sockets;
+using Dingler.Data;
 using Dingler.Server;
 using Dingler.Server.Abstractions;
 using Dingler.Server.Startup;
@@ -67,6 +68,8 @@ namespace Dingler.Game.CompositionRoot
                     .AddSqliteDbContext<GameDataContext>(connectionString)
                     .AddScopedAsyncStartupService<TournamentManager>()
                     .AddScopedAsyncStartupService<SessionService>()
+                    .AddSingleton<SqliteWriterQueue<GameDataContext>>()
+                    .AddSingleton<SqliteWriterQueue<HexCredentialsContext>>()
                     .AddScoped<ChatManager>()
                     .AddScoped<ChatRoomFactory>()
                     .AddScoped<TournamentCommunicator>()
