@@ -49,7 +49,24 @@ namespace Dingler.Game.CompositionRoot
                         "Auth:BaseUrl must be an absolute URL, e.g. https://localhost:5000");
                 
                 
-                sc.AddSingletonStartupService(_ => new CollectionCacheService(gameDataLocation))
+                // Frost Ring Arena runs: one JSON file per player, next to gameData.db unless Arena:StorePath says otherwise.
+                var arenaStorePath = hb.Configuration["Arena:StorePath"] is { Length: > 0 } configuredPath
+                    ? configuredPath
+                    : Path.Combine(AppContext.BaseDirectory, "data", "arena");
+                var arenaRunStore = new Dingler.Game.Arena.ArenaRunStore(arenaStorePath);
+                sc.AddSingleton(arenaRunStore);
+                sc.AddSingleton<Dingler.Game.Arena.ArenaBattleService>();
+
+                // Deck import from the Hex Codex deck builder: the site's data folder (ids.json, gems.json) and the inbox.
+                sc.AddSingleton(new Dingler.Game.DeckImport.DeckImportOptions
+                {
+                    SiteDataPath = hb.Configuration["DeckImport:SiteDataPath"] ?? "",
+                    InboxPath = hb.Configuration["DeckImport:InboxPath"] is { Length: > 0 } inbox
+                        ? inbox
+                        : Path.Combine(AppContext.BaseDirectory, "data", "deck-inbox"),
+                });
+
+                sc.AddSingletonStartupService(_ => new CollectionCacheService(gameDataLocation, arenaRunStore))
                     .AddHttpClient("AuthClient", (sp, client) =>
                     {
                         var auth = sp.GetRequiredService<IOptions<AuthOptions>>().Value;
@@ -76,6 +93,7 @@ namespace Dingler.Game.CompositionRoot
                     .AddScoped<PlayerProfileRepository>()
                     .AddScoped<FriendRepository>()
                     .AddScoped<DeckService>()
+                    .AddScoped<Dingler.Game.DeckImport.DeckImportService>()
                     .AddScoped<GameManager>()
                     .AddScoped<SessionManager>()
                     .AddScoped<IStreamHandler, HexStreamHandler>()
