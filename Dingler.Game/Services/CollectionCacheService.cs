@@ -23,9 +23,12 @@ namespace Dingler.Game.Services
         private bool _isInitialized;
         public Dictionary<ulong, ResourceId> CollectionIds { get; set; } = new();
 
-        public CollectionCacheService(string path)
+        private readonly Dingler.Game.Arena.ArenaRunStore? _arenaRunStore;
+
+        public CollectionCacheService(string path, Dingler.Game.Arena.ArenaRunStore? arenaRunStore = null)
         {
             _path = path;
+            _arenaRunStore = arenaRunStore;
         }
         
         public void Initialize()
@@ -139,6 +142,17 @@ namespace Dingler.Game.Services
                         continue;
 
                     var deckBits = dinglerBits.ToDeckBits();
+                    // The arena run store is the truth for the arena lock; the client shows it in the deck list.
+                    if (_arenaRunStore is not null && _arenaRunStore.IsDeckInRun(profileId, deckBits.Id))
+                    {
+                        deckBits.Lock = HexGame::Game.Shared.Mechanics.EDeckLock.Arena_Lock;
+                        deckBits.LockHolder = _arenaRunStore.TryGet(profileId, out var arenaRun) ? arenaRun.ArenaId : 0;
+                    }
+                    else if (deckBits.Lock == HexGame::Game.Shared.Mechanics.EDeckLock.Arena_Lock)
+                    {
+                        deckBits.Lock = HexGame::Game.Shared.Mechanics.EDeckLock.Not_Locked;
+                        deckBits.LockHolder = 0;
+                    }
                     context.Decks.TryAdd(deckBits.Id, deckBits);
                     deckBitsList.Add(deckBits);
                 }
@@ -160,6 +174,20 @@ namespace Dingler.Game.Services
             foreach (var deck in deckBitsList)
             {
                 encodedData.Add(EncData.Encode(deck));
+            }
+
+            // Frost Ring Arena account flags (step 5): the client takes a List<FlagData> chunk as its whole flag list
+            // (PlayerProfile.HandleProfileStream). Sent only when the player has some, so other profiles are unchanged.
+            if (_arenaRunStore?.GetFlags(profileId) is { Count: > 0 } arenaFlags)
+            {
+                try
+                {
+                    encodedData.Add(EncData.Encode(Dingler.Game.Arena.ArenaAccount.ToFlagData(arenaFlags)));
+                }
+                catch (Exception ex)
+                {
+                    Dingler.Game.Protocol.StaticLogger.LogError("Arena: encoding the account flags failed ({error}); login goes on without them", ex.Message);
+                }
             }
 
             List<Task> tasks = new();
