@@ -1,4 +1,6 @@
-﻿using System.Reflection;
+﻿using System.Net;
+using System.Net.Sockets;
+using System.Reflection;
 using Dingler.Server.Abstractions;
 using Dingler.Server.Pipeline;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +25,8 @@ public static class HostBuilderExtensions
 
 				configAction?.Invoke(hb, configuration);
 
+				sc.AddSingleton(configuration);
+				
 				var descriptors = sc
 					.Where(d => d.ServiceType.IsGenericType &&
 					            (d.ServiceType.GetGenericTypeDefinition() == typeof(IAsyncRequestHandler<>) ||
@@ -60,7 +64,7 @@ public static class HostBuilderExtensions
 								return parameters[0].ParameterType.GetGenericTypeDefinition() ==
 								       interfaceGenericDefinition;
 							});
-						
+
 						registerMethod
 							.MakeGenericMethod(genericArgs)
 							.Invoke(handlerMiddleware, [handler]);
@@ -72,8 +76,11 @@ public static class HostBuilderExtensions
 
 				sc.AddScoped<OutgoingPipeline>(sp =>
 					new OutgoingPipeline(configuration.OutgoingPipelineBuilder.Build()));
-			});
 
+				sc.AddScoped<TcpListener>(_ =>
+					new TcpListener(configuration.Url, configuration.Port));
+			});
+				
 		return builder;
 	}
 

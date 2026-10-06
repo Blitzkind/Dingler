@@ -15,6 +15,8 @@ public sealed class DinglerClient : IDisposable
 	private readonly Channel<byte[]> _incomingChannel;
 	private readonly Channel<RequestContext> _outgoingChannel;
 	private readonly ILogger<DinglerClient>? _logger;
+
+	private readonly TimeSpan _idleTimeout;
 	public SessionContext SessionContext { get; }
 
 	
@@ -22,6 +24,7 @@ public sealed class DinglerClient : IDisposable
 		IncomingPipeline incomingPipeline, 
 		OutgoingPipeline outgoingPipeline,
 		IStreamHandler streamHandler,
+		TimeSpan idleTimeout,
 		ILogger<DinglerClient>? logger = null)
 	{
 		SessionContext = sessionContext;
@@ -29,6 +32,7 @@ public sealed class DinglerClient : IDisposable
 		_incomingPipeline = incomingPipeline;
 		_outgoingPipeline = outgoingPipeline;
 		_streamHandler = streamHandler;
+		_idleTimeout = idleTimeout;
 		_logger = logger;
 		_incomingChannel = Channel.CreateUnbounded<byte[]>();
 		_outgoingChannel = Channel.CreateUnbounded<RequestContext>();
@@ -94,7 +98,9 @@ public sealed class DinglerClient : IDisposable
 		{
 			while (!token.IsCancellationRequested)
 			{
-				var data = await _streamHandler.ReadAsync(stream, token);
+				using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+				idleCts.CancelAfter(_idleTimeout);
+				var data = await _streamHandler.ReadAsync(stream, idleCts.Token);
 				await _incomingChannel.Writer.WriteAsync(data, token);
 			}
 		}
