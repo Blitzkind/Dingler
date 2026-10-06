@@ -1,6 +1,7 @@
 # Contributing
 
-- No LLM PRs please. I know "this is how the industry is moving" but I do not care. This is a hobby and learning project. Embrace the friction.
+- LLM usage
+  - LLMs PRs are now allowed but will be given a higher level of scrutiny during review until a baseline level of competency is determined. This is nothing against the developer who made the PR, the owner just wants to make sure he understands the code base completely in order to maintain it in the future.
 
 - Do not use Harmony Patches for anything outside of the following
   - Structural changes
