@@ -10,6 +10,7 @@ namespace Dingler.Server
     {
         private readonly TcpListener _tcpListener;
         private readonly SessionManager _sessionManager;
+        private readonly TimeSpan _idleTimeout;
         private readonly IStreamHandler _streamHandler;
         private readonly IEnumerable<IStartupService> _startupServices;
         private readonly IEnumerable<IAsyncStartupService> _asyncStartupServices;
@@ -25,6 +26,7 @@ namespace Dingler.Server
         public bool IsRunning { get; private set; }
         public DinglerServer(TcpListener tcpListener,
             SessionManager sessionManager,
+            ServerConfiguration configuration,
             IStreamHandler streamHandler,
             IncomingPipeline incomingPipeline,
             OutgoingPipeline outgoingPipeLine,
@@ -34,6 +36,7 @@ namespace Dingler.Server
             ILoggerFactory? loggerFactory)
         {
             _tcpListener = tcpListener;
+            _idleTimeout = TimeSpan.FromSeconds(configuration.IdleTimeoutSeconds);
             _sessionManager = sessionManager;
             _streamHandler = streamHandler;
             _cancellationManager = cancellationManager;
@@ -116,7 +119,7 @@ namespace Dingler.Server
                     }
 
                     var client = new DinglerClient(context, tcpClient, _incomingPipeline, _outgoingPipeline,
-                        _streamHandler, _loggerFactory?.CreateLogger<DinglerClient>());
+                        _streamHandler, _idleTimeout, _loggerFactory?.CreateLogger<DinglerClient>());
 
                     handleTasks.Add(HandleClientRequests(client));
                 }

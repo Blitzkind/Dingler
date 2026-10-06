@@ -1,7 +1,5 @@
 ﻿extern alias HexGame;
 using System.Net;
-using System.Net.Sockets;
-using Dingler.Data;
 using Dingler.Server;
 using Dingler.Server.Abstractions;
 using Dingler.Server.Startup;
@@ -97,17 +95,7 @@ namespace Dingler.Game.CompositionRoot
                     .AddScoped<GameManager>()
                     .AddScoped<SessionManager>()
                     .AddScoped<IStreamHandler, HexStreamHandler>()
-                    .AddScoped<TournamentRepository>()
-                    .AddScoped<TcpListener>(sp =>
-                    {
-                        var ip = IPAddress.Parse(hb.Configuration["Dingler:Endpoints:TCP:Url"] ?? "127.0.0.1");
-                        if (!int.TryParse(hb.Configuration["Dingler:Endpoints:TCP:Port"], out var port))
-                        {
-                            port = 9933;
-                        }
-
-                        return new TcpListener(ip, port);
-                    });
+                    .AddScoped<TournamentRepository>();
             });
 
             DinglerEncoder.RegisterTypeSwap<TrackedPlayer, RemotePlayer>();
@@ -132,8 +120,15 @@ namespace Dingler.Game.CompositionRoot
                     port = 9933;
                 }
 
-                options.Url = url;
+                if (!int.TryParse(hb.Configuration["Dingler:Endpoints:TCP:IdleTimeoutSeconds"],
+                        out var idleTimeoutSeconds))
+                {
+                    idleTimeoutSeconds = 120;
+                }
+                
+                options.Url = IPAddress.Parse(url);
                 options.Port = port;
+                options.IdleTimeoutSeconds = idleTimeoutSeconds;
 
                 options.IncomingPipelineBuilder
                     .Use(new ParseMiddleware())
