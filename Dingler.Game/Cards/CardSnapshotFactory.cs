@@ -1,5 +1,5 @@
 ﻿extern alias HexGame;
-
+using HexGame::Game.Shared;
 using HexGame::Game.Shared.Mechanics;
 using HexGame::Reckoning.Game;
 
@@ -39,7 +39,15 @@ namespace Dingler.Game.Cards
             {
                 hash = HashCode.Combine(hash, abilityId.GetHashCode());
             }
+            
+            var integerVariables = new List<KeyValuePair<string, int>>(card.CardIntegerVariables);
+            integerVariables.Sort(static (a, b) => string.CompareOrdinal(a.Key, b.Key));
 
+            foreach (var variable in integerVariables)
+            {
+                hash = HashCode.Combine(hash, variable.Key, variable.Value);
+            }
+            
             var counters = new List<KeyValuePair<CardCounterTemplate, int>>(card.Counters);
             counters.Sort(static (a, b) => a.Key.m_CardCounterId.guid.CompareTo(b.Key.m_CardCounterId.guid));
 
