@@ -43,17 +43,16 @@ namespace Dingler.Data.Repositories
                 if (existing is null)
                 {
                     await context.DraftCollections.AddAsync(collection).ConfigureAwait(false);
+                    return;
                 }
-                else
-                {
-                    if (collection.CardsJson is not null)
-                        existing.CardsJson = collection.CardsJson;
 
-                    if (collection.DeckJson is not null)
-                        existing.DeckJson = collection.DeckJson;
+                if (collection.CardsJson is not null)
+                    existing.CardsJson = collection.CardsJson;
 
-                    context.DraftCollections.Update(existing);
-                }
+                if (collection.DeckJson is not null)
+                    existing.DeckJson = collection.DeckJson;
+
+                context.DraftCollections.Update(existing);
             });
         }
     }
