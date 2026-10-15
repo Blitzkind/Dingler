@@ -17,6 +17,7 @@ using HexGame::Game.Shared.Network.Tournaments;
 using HexGame::Game.Shared.Tournaments;
 using HexGame::Game.Shared.TournamentSystemMkII;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Dingler.Game.Tournaments;
 
@@ -31,6 +32,7 @@ public class TournamentManager : IAsyncStartupService
 	private readonly Dictionary<ulong, CancellationTokenSource> _tournamentCtsCollection;
 	private readonly IServiceProvider _serviceProvider;
 	private readonly TournamentCommunicator _tournamentCommunicator;
+	private readonly ILoggerFactory _loggerFactory;
 
 	private static readonly JsonSerializerOptions JsonSerializerOptions = new()
 	{
@@ -50,12 +52,13 @@ public class TournamentManager : IAsyncStartupService
 	private ulong _currentTournamentId = 100000;
 	private ulong _virtualTournamentId = long.MaxValue;
 
-	public TournamentManager(IServiceProvider serviceProvider)
+	public TournamentManager(IServiceProvider serviceProvider, ILoggerFactory loggerFactory)
 	{
 		_serviceProvider = serviceProvider;
 		_tournamentRepository = serviceProvider.GetRequiredService<TournamentRepository>();
 		_tournamentCtsCollection = new Dictionary<ulong, CancellationTokenSource>();
 		_tournamentCommunicator = _serviceProvider.GetRequiredService<TournamentCommunicator>();
+		_loggerFactory = loggerFactory;
 	}
 
 	public InitTournamentDescriptionsEventArgs? StartupDescriptions { get; private set; }
@@ -245,7 +248,8 @@ public class TournamentManager : IAsyncStartupService
 		{
 			var sessionManager = _serviceProvider.GetRequiredService<SessionManager>();
 			var repository = _serviceProvider.GetRequiredService<DraftCollectionRepository>();
-			phases.Add(new DraftPhase(sessionManager, repository, settings.DraftSetIds, settings.ConfigId));
+			var logger = _loggerFactory.CreateLogger<DraftPhase>();
+			phases.Add(new DraftPhase(sessionManager, repository, settings.DraftSetIds, settings.ConfigId, logger));
 			phases.Add(new DeckBuildingPhase(sessionManager, repository, settings.ConfigId));
 		}
 
