@@ -1,14 +1,14 @@
 ﻿using Dingler.Data.Context;
-using Dingler.Data.Entities.GameData;
+using Dingler.Data.Entities.PlayerData;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dingler.Data.Repositories
 {
     public sealed class AccountRepository
     {
-        private readonly IDbContextFactory<GameDataContext> _factory;
+        private readonly IDbContextFactory<PlayerDataContext> _factory;
 
-        public AccountRepository(IDbContextFactory<GameDataContext> factory)
+        public AccountRepository(IDbContextFactory<PlayerDataContext> factory)
         {
             _factory = factory;
         }

@@ -17,13 +17,13 @@ public class TournamentSettings
 	public bool IsSpawner { get; set; }
 	public bool IsWaitingRoom { get; set; }
 
-	public int ConfigId { get; }
+	public ulong ConfigId { get; }
 
 	public IReadOnlyList<int> DraftSetIds { get; }
 
 	public TournamentSettings(long registrationOpenTime, int maxPlayers, int minPlayers, string description,
 		long tournamentStartTime, long tournamentEndTime, ETournamentFormats tournamentFormat,
-		ETournamentStyle tournamentStyle, bool isSpawner, bool isWaitingRoom, int configId = 0,
+		ETournamentStyle tournamentStyle, bool isSpawner, bool isWaitingRoom, ulong configId = 0,
 		IReadOnlyList<int>? draftSetIds = null)
 	{
 		RegistrationOpenTime = registrationOpenTime;

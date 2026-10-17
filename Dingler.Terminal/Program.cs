@@ -48,9 +48,12 @@ internal static class Program
             
             using (var scope = host.Services.CreateScope())
             {
-                var gameDataContext = scope.ServiceProvider.GetRequiredService<GameDataContext>();
-
-                await gameDataContext.Database.MigrateAsync();
+                var adminContext = scope.ServiceProvider.GetRequiredService<AdminContext>();
+                var gameContext = scope.ServiceProvider.GetRequiredService<HexGameContext>();
+                var playerDataContext = scope.ServiceProvider.GetRequiredService<PlayerDataContext>();
+                await adminContext.Database.MigrateAsync();
+                await gameContext.Database.MigrateAsync();
+                await playerDataContext.Database.MigrateAsync();
 
             }
 
