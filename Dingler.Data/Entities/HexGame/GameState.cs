@@ -1,7 +1,0 @@
-namespace Dingler.Data.Entities.HexGame;
-
-public class GameState
-{
-	public int Id { get; set; }
-	public string Description { get; set; } = null!;
-}

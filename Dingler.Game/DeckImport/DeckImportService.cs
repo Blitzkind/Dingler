@@ -7,7 +7,7 @@ using Dingler.Server;
 using HexGame::Game.Shared;
 using HexGame::Game.Shared.Mechanics;
 using Microsoft.Extensions.Logging;
-using Deck = Dingler.Data.Entities.PlayerData.Deck;
+using Deck = Dingler.Data.Entities.GameData.Deck;
 
 namespace Dingler.Game.DeckImport;
 

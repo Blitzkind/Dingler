@@ -1,13 +1,13 @@
 ﻿using Dingler.Data.Context;
-using Dingler.Data.Entities.PlayerData;
+using Dingler.Data.Entities.GameData;
 using Dingler.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dingler.Data.Repositories
 {
-    public sealed class DeckRepository : BaseRepository<PlayerDataContext>
+    public sealed class DeckRepository : BaseRepository<GameDataContext>
     {
-        public DeckRepository(IDbContextFactory<PlayerDataContext> factory, SqliteWriter<PlayerDataContext> writer)
+        public DeckRepository(IDbContextFactory<GameDataContext> factory, SqliteWriter<GameDataContext> writer)
             : base(factory, writer)
         { }
 
