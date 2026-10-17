@@ -7,7 +7,7 @@ using HexGame::Game.Shared.Network.Tournaments;
 using HexGame::Game.Shared.Tournaments;
 using HexGame::Game.Shared.TournamentSystemMkII;
 using HexGame::Reckoning.Game;
-using DraftCollectionEntity = Dingler.Data.Entities.PlayerData.DraftCollection;
+using DraftCollectionEntity = Dingler.Data.Entities.GameData.DraftCollection;
 
 namespace Dingler.Game.Tournaments;
 
@@ -17,7 +17,7 @@ public sealed class DeckBuildingPhase : ITournamentPhase
 
 	private readonly SessionManager _sessionManager;
 	private readonly DraftCollectionRepository _repository;
-	private readonly ulong _configId;
+	private readonly int _configId;
 	private readonly int _deckBuildSeconds;
 
 	private readonly Lock _gate = new();
@@ -26,7 +26,7 @@ public sealed class DeckBuildingPhase : ITournamentPhase
 	private bool _accepting;
 	private int _playerCount;
 
-	public DeckBuildingPhase(SessionManager sessionManager, DraftCollectionRepository repository, ulong configId,
+	public DeckBuildingPhase(SessionManager sessionManager, DraftCollectionRepository repository, int configId,
 		int deckBuildSeconds = DefaultDeckBuildSeconds)
 	{
 		_sessionManager = sessionManager;

@@ -1,17 +1,17 @@
 using Dingler.Data.Context;
-using Dingler.Data.Entities.PlayerData;
+using Dingler.Data.Entities.GameData;
 using Dingler.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dingler.Data.Repositories
 {
-    public sealed class DraftCollectionRepository : BaseRepository<PlayerDataContext>
+    public sealed class DraftCollectionRepository : BaseRepository<GameDataContext>
     {
-        public DraftCollectionRepository(IDbContextFactory<PlayerDataContext> factory, SqliteWriter<PlayerDataContext> writer)
+        public DraftCollectionRepository(IDbContextFactory<GameDataContext> factory, SqliteWriter<GameDataContext> writer)
             : base(factory, writer)
         { }
 
-        public async Task<List<DraftCollection>> GetByTournamentAsync(ulong tournamentId)
+        public async Task<List<DraftCollection>> GetByTournamentAsync(int tournamentId)
         {
             await using var context = await _factory.CreateDbContextAsync().ConfigureAwait(false);
 
@@ -21,7 +21,7 @@ namespace Dingler.Data.Repositories
                 .ConfigureAwait(false);
         }
 
-        public async Task<DraftCollection?> GetByTournamentAndPlayerAsync(ulong tournamentId, ulong playerProfileId)
+        public async Task<DraftCollection?> GetByTournamentAndPlayerAsync(int tournamentId, ulong playerProfileId)
         {
             await using var context = await _factory.CreateDbContextAsync().ConfigureAwait(false);
 
@@ -43,16 +43,17 @@ namespace Dingler.Data.Repositories
                 if (existing is null)
                 {
                     await context.DraftCollections.AddAsync(collection).ConfigureAwait(false);
-                    return;
                 }
+                else
+                {
+                    if (collection.CardsJson is not null)
+                        existing.CardsJson = collection.CardsJson;
 
-                if (collection.CardsJson is not null)
-                    existing.CardsJson = collection.CardsJson;
+                    if (collection.DeckJson is not null)
+                        existing.DeckJson = collection.DeckJson;
 
-                if (collection.DeckJson is not null)
-                    existing.DeckJson = collection.DeckJson;
-
-                context.DraftCollections.Update(existing);
+                    context.DraftCollections.Update(existing);
+                }
             });
         }
     }

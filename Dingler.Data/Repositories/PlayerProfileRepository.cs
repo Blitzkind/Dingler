@@ -1,15 +1,15 @@
 ﻿using System.Linq.Expressions;
 using Dingler.Data.Context;
-using Dingler.Data.Entities.PlayerData;
+using Dingler.Data.Entities.GameData;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dingler.Data.Repositories
 {
     public sealed class PlayerProfileRepository
     {
-        private readonly IDbContextFactory<PlayerDataContext> _factory;
+        private readonly IDbContextFactory<GameDataContext> _factory;
 
-        public PlayerProfileRepository(IDbContextFactory<PlayerDataContext> factory)
+        public PlayerProfileRepository(IDbContextFactory<GameDataContext> factory)
         {
             _factory = factory;
         }

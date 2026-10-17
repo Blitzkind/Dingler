@@ -31,7 +31,7 @@ public sealed class DraftSelectCardRequestHandler : IRequestHandler<DraftSelectC
 			};
 		}
 
-		var error = tournament.DraftPhase.SelectCard(context.UserName, request.PackID, request.CardID, request.TournamentID);
+		var error = tournament.DraftPhase.SelectCard(context.UserName, request.PackID, request.CardID);
 
 		return new DraftSelectCardResponse { Error = error };
 	}

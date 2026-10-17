@@ -194,7 +194,7 @@ public class TournamentManager : IAsyncStartupService
 		return flags;
 	}
 
-	private static TournamentSettings CreateTournamentSettings(Data.Entities.HexGame.Tournament tournament)
+	private static TournamentSettings CreateTournamentSettings(Data.Entities.GameData.Tournament tournament)
 	{
 		var format = GetFormat(tournament.TournamentType.Id);
 
@@ -214,7 +214,7 @@ public class TournamentManager : IAsyncStartupService
 			isWaitingRoom: false, configId: tournament.Id, draftSetIds: draftSetIds);
 	}
 
-	private static GameSettings CreateGameSettings(Data.Entities.HexGame.Tournament tournament)
+	private static GameSettings CreateGameSettings(Data.Entities.GameData.Tournament tournament)
 	{
 		var sessionFlags = ESessionFlags.IsTournament;
 		var seriesType = SessionStateEncounterData.SeriesType.CONSTRUCTED;

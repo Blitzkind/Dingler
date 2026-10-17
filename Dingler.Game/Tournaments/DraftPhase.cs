@@ -7,7 +7,7 @@ using HexGame::Game.Shared.Network.Tournaments;
 using HexGame::Game.Shared.Tournaments;
 using HexGame::Game.Shared.TournamentSystemMkII;
 using Microsoft.Extensions.Logging;
-using DraftCollectionEntity = Dingler.Data.Entities.PlayerData.DraftCollection;
+using DraftCollectionEntity = Dingler.Data.Entities.GameData.DraftCollection;
 
 namespace Dingler.Game.Tournaments;
 
@@ -19,7 +19,7 @@ public sealed class DraftPhase : ITournamentPhase
 	private readonly SessionManager _sessionManager;
 	private readonly DraftCollectionRepository _repository;
 	private readonly IReadOnlyList<int> _draftSetIds;
-	private readonly ulong _configId;
+	private readonly int _configId;
 
 	private readonly Lock _gate = new();
 	private readonly List<DraftSeat> _seats = new();
@@ -31,7 +31,7 @@ public sealed class DraftPhase : ITournamentPhase
 	private ulong _packIdCounter;
 
 	public DraftPhase(SessionManager sessionManager, DraftCollectionRepository repository,
-		IReadOnlyList<int> draftSetIds, ulong configId, ILogger<DraftPhase> logger)
+		IReadOnlyList<int> draftSetIds, int configId, ILogger<DraftPhase> logger)
 	{
 		_sessionManager = sessionManager;
 		_repository = repository;
