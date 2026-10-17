@@ -6,6 +6,7 @@ using HexGame::Game.Shared.Domain;
 using HexGame::Game.Shared.Network.Tournaments;
 using HexGame::Game.Shared.Tournaments;
 using HexGame::Game.Shared.TournamentSystemMkII;
+using Microsoft.Extensions.Logging;
 using DraftCollectionEntity = Dingler.Data.Entities.GameData.DraftCollection;
 
 namespace Dingler.Game.Tournaments;
@@ -24,17 +25,19 @@ public sealed class DraftPhase : ITournamentPhase
 	private readonly List<DraftSeat> _seats = new();
 	private readonly Dictionary<string, int> _seatIndexByName = new();
 	private readonly HashSet<string> _autoPickers = new(StringComparer.Ordinal);
+	private readonly ILogger<DraftPhase> _logger;
 	private RoundState? _currentRound;
 	private ulong _idCounter;
 	private ulong _packIdCounter;
 
 	public DraftPhase(SessionManager sessionManager, DraftCollectionRepository repository,
-		IReadOnlyList<int> draftSetIds, int configId)
+		IReadOnlyList<int> draftSetIds, int configId, ILogger<DraftPhase> logger)
 	{
 		_sessionManager = sessionManager;
 		_repository = repository;
 		_draftSetIds = draftSetIds;
 		_configId = configId;
+		_logger = logger;
 	}
 
 	public async Task RunAsync(Tournament tournament, CancellationToken token)
@@ -77,7 +80,7 @@ public sealed class DraftPhase : ITournamentPhase
 
 	public void AddAutoPicker(string username) => _autoPickers.Add(username);
 
-	public EDraftSelectCardError SelectCard(string username, ulong packId, ulong cardId)
+	public EDraftSelectCardError SelectCard(string username, ulong packId, ulong cardId, ulong tournamentId)
 	{
 		lock (_gate)
 		{
@@ -97,6 +100,13 @@ public sealed class DraftPhase : ITournamentPhase
 
 			_currentRound.Picks[seat] = seat.CurrentPack.First(c => c.Id == cardId);
 
+			var picked = _currentRound.Picks[seat];
+			
+			seat.CurrentPack.Remove(picked);
+			seat.Collection.Add(picked);
+
+			SendTo(seat.Name, new ReceiveSelectedCardEventArgs(tournamentId, picked));
+			
 			if (_currentRound.Picks.Count == _currentRound.ActiveSeats.Count)
 				_currentRound.AllPicked.TrySetResult();
 
@@ -125,7 +135,11 @@ public sealed class DraftPhase : ITournamentPhase
 			foreach (var seat in activeSeats)
 			{
 				if (_autoPickers.Contains(seat.Name))
-					round.Picks[seat] = DraftManager.PickRarest(seat.CurrentPack);
+				{
+					var picked = round.Picks[seat] = DraftManager.PickRarest(seat.CurrentPack);
+					seat.CurrentPack.Remove(picked);
+					seat.Collection.Add(picked);
+				}
 			}
 
 			if (round.Picks.Count == round.ActiveSeats.Count)
@@ -135,21 +149,26 @@ public sealed class DraftPhase : ITournamentPhase
 		foreach (var seat in activeSeats)
 		{
 			var ticks = (int)(TimeSpan.TicksPerSecond * SecondsPerCardRemaining * seat.CurrentPack.Count);
-			SendTo(seat.Name, new ReceiveDraftPackEventArgs(tournament.Id, round.PackIdsBySeat[seat], ticks, new List<card_instance_bits>(seat.CurrentPack)));
+			SendTo(seat.Name,
+				new ReceiveDraftPackEventArgs(tournament.Id, round.PackIdsBySeat[seat], ticks,
+					new List<card_instance_bits>(seat.CurrentPack)));
 		}
 
-		var maxTicks = activeSeats.Max(s => (long)TimeSpan.TicksPerSecond * SecondsPerCardRemaining * s.CurrentPack.Count);
+		var maxTicks =
+			activeSeats.Max(s => (long)TimeSpan.TicksPerSecond * SecondsPerCardRemaining * s.CurrentPack.Count);
 		var timeout = Task.Delay(TimeSpan.FromTicks(maxTicks), token);
 
 		await Task.WhenAny(round.AllPicked.Task, timeout);
-
+		
 		lock (_gate)
 		{
 			foreach (var seat in activeSeats)
 			{
-				if (!round.Picks.TryGetValue(seat, out var picked))
-					picked = DraftManager.PickRarest(seat.CurrentPack);
-
+				if (round.Picks.TryGetValue(seat, out var picked))
+					continue;
+				
+				picked = DraftManager.PickRarest(seat.CurrentPack);
+				
 				seat.CurrentPack.Remove(picked);
 				seat.Collection.Add(picked);
 
@@ -158,7 +177,7 @@ public sealed class DraftPhase : ITournamentPhase
 
 			_currentRound = null;
 		}
-
+		
 		RotatePacks(moveRight);
 	}
 
@@ -209,6 +228,7 @@ public sealed class DraftPhase : ITournamentPhase
 	private sealed class RoundState
 	{
 		public Dictionary<DraftSeat, ulong> PackIdsBySeat { get; } = new();
+		public Dictionary<DraftSeat, ulong> HighlightedCards { get; } = new();
 		public Dictionary<DraftSeat, HashSet<ulong>> CardsBySeat { get; } = new();
 		public Dictionary<DraftSeat, card_instance_bits> Picks { get; } = new();
 		public List<DraftSeat> ActiveSeats { get; }
@@ -218,5 +238,26 @@ public sealed class DraftPhase : ITournamentPhase
 		{
 			ActiveSeats = activeSeats;
 		}
+	}
+
+	public EDraftHighlightCardError SetCardForTimeout(string username, ulong cardId)
+	{
+		if (_currentRound is null)
+		{			
+			_logger.LogError("Player {username} tried to set highlight card but round is null?", username);
+			return EDraftHighlightCardError.InternalServerError;
+		}
+
+		if (!_seatIndexByName.TryGetValue(username, out var index))
+		{
+			_logger.LogError("Player {username} tried to set highlight card but did not have a valid seat", username);
+			return EDraftHighlightCardError.InternalServerError;
+		}
+
+		var seat = _seats[index];
+
+		_currentRound.HighlightedCards[seat] = cardId;
+
+		return EDraftHighlightCardError.Ok;
 	}
 }
