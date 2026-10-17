@@ -9,6 +9,7 @@ using Dingler.Server.Abstractions;
 using Dingler.Data.Repositories;
 using Dingler.Game.Games;
 using Dingler.Game.Protocol.Messages.Json;
+using Dingler.Game.States;
 using Dingler.Game.Tournaments.Registration.Rules;
 using Dingler.Game.Tournaments.StartCondition;
 using HexGame::Game.Shared;
@@ -115,7 +116,8 @@ public class TournamentManager : IAsyncStartupService
 				tournamentSettings, gameSettings, cts.Token, BuildPhases(tournamentSettings));
 
 			_tournamentCommunicator.RegisterTournamentMethods(tournament);
-			tournament.Cleanup += Cleanup; 
+			tournament.Cleanup += Cleanup;
+			tournament.PlayerDeregistered += OnPlayerDeregistered;
 			_tournaments.TryAdd(tournamentId, tournament);
 			_ = tournament.LaunchAsync(cts.Token);
 
@@ -144,6 +146,11 @@ public class TournamentManager : IAsyncStartupService
 		StartupDescriptions = new InitTournamentDescriptionsEventArgs(tournamentDescCollection);
 	}
 
+	private void OnPlayerDeregistered(Tournament tournament, TournamentRoomState state, string username)
+	{
+		UntrackPlayer(username);
+	}
+
 	public Tournament CreateTournament(TournamentSettings tournamentSettings, GameSettings gameSettings)
 	{
 		var sessionManager = _serviceProvider.GetRequiredService<SessionManager>();
@@ -162,9 +169,21 @@ public class TournamentManager : IAsyncStartupService
 
 		_tournamentCommunicator.RegisterTournamentMethods(tournament);
 		tournament.Cleanup += Cleanup;
+		tournament.PlayerDeregistered += OnPlayerDeregistered;
 		_ = tournament.LaunchAsync(cts.Token);
 		_tournaments.TryAdd(assignedId, tournament);
 		return tournament;
+	}
+
+	public void UntrackPlayer(string username)
+	{
+		_playerMap.Remove(username, out _);
+		var sessionManager = _serviceProvider.GetRequiredService<SessionManager>();
+		
+		if (!sessionManager.TryGetUserSession(username, out var context))
+			return;
+
+		context.CurrentTournamentId = 0;
 	}
 	
 	private static ETournamentFormats GetFormat(int tournamentTypeId) => tournamentTypeId switch
@@ -346,6 +365,7 @@ public class TournamentManager : IAsyncStartupService
 	public void Cleanup(Tournament tournament)
 	{
 		tournament.Cleanup -= Cleanup;
+		tournament.PlayerDeregistered -= OnPlayerDeregistered;
 		_tournamentCommunicator.UnregisterTournamentMethods(tournament);
 		_tournaments.TryRemove(tournament.Id, out _);
 

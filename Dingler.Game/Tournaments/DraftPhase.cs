@@ -1,4 +1,5 @@
 extern alias HexGame;
+using System.Collections.Concurrent;
 using Dingler.Data.Repositories;
 using Dingler.Game.Draft;
 using Dingler.Server;
@@ -166,6 +167,14 @@ public sealed class DraftPhase : ITournamentPhase
 			{
 				if (round.Picks.TryGetValue(seat, out var picked))
 					continue;
+
+				if (round.HighlightedCards.TryGetValue(seat, out picked))
+				{
+					seat.CurrentPack.Remove(picked);
+					seat.Collection.Add(picked);
+					SendTo(seat.Name, new ReceiveSelectedCardEventArgs(tournament.Id, picked));
+					continue;
+				}
 				
 				picked = DraftManager.PickRarest(seat.CurrentPack);
 				
@@ -227,10 +236,10 @@ public sealed class DraftPhase : ITournamentPhase
 
 	private sealed class RoundState
 	{
-		public Dictionary<DraftSeat, ulong> PackIdsBySeat { get; } = new();
-		public Dictionary<DraftSeat, ulong> HighlightedCards { get; } = new();
-		public Dictionary<DraftSeat, HashSet<ulong>> CardsBySeat { get; } = new();
-		public Dictionary<DraftSeat, card_instance_bits> Picks { get; } = new();
+		public ConcurrentDictionary<DraftSeat, ulong> PackIdsBySeat { get; } = new();
+		public ConcurrentDictionary<DraftSeat, card_instance_bits> HighlightedCards { get; } = new();
+		public ConcurrentDictionary<DraftSeat, HashSet<ulong>> CardsBySeat { get; } = new();
+		public ConcurrentDictionary<DraftSeat, card_instance_bits> Picks { get; } = new();
 		public List<DraftSeat> ActiveSeats { get; }
 		public TaskCompletionSource AllPicked { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -256,7 +265,9 @@ public sealed class DraftPhase : ITournamentPhase
 
 		var seat = _seats[index];
 
-		_currentRound.HighlightedCards[seat] = cardId;
+		var pick = seat.CurrentPack.First(c => c.CardId.InstanceId == cardId);
+		
+		_currentRound.HighlightedCards[seat] = pick;
 
 		return EDraftHighlightCardError.Ok;
 	}
