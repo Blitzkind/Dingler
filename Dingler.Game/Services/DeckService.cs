@@ -10,7 +10,7 @@ using Dingler.Server;
 using Dingler.Data.Repositories;
 using Dingler.Game.Arena;
 using Dingler.Game.Domain;
-using Deck = Dingler.Data.Entities.GameData.Deck;
+using Deck = Dingler.Data.Entities.PlayerData.Deck;
 
 namespace Dingler.Game.Services
 {

@@ -1,17 +1,17 @@
 using Dingler.Data.Context;
-using Dingler.Data.Entities.GameData;
+using Dingler.Data.Entities.PlayerData;
 using Dingler.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dingler.Data.Repositories
 {
-    public sealed class DraftCollectionRepository : BaseRepository<GameDataContext>
+    public sealed class DraftCollectionRepository : BaseRepository<PlayerDataContext>
     {
-        public DraftCollectionRepository(IDbContextFactory<GameDataContext> factory, SqliteWriter<GameDataContext> writer)
+        public DraftCollectionRepository(IDbContextFactory<PlayerDataContext> factory, SqliteWriter<PlayerDataContext> writer)
             : base(factory, writer)
         { }
 
-        public async Task<List<DraftCollection>> GetByTournamentAsync(int tournamentId)
+        public async Task<List<DraftCollection>> GetByTournamentAsync(ulong tournamentId)
         {
             await using var context = await _factory.CreateDbContextAsync().ConfigureAwait(false);
 
@@ -21,7 +21,7 @@ namespace Dingler.Data.Repositories
                 .ConfigureAwait(false);
         }
 
-        public async Task<DraftCollection?> GetByTournamentAndPlayerAsync(int tournamentId, ulong playerProfileId)
+        public async Task<DraftCollection?> GetByTournamentAndPlayerAsync(ulong tournamentId, ulong playerProfileId)
         {
             await using var context = await _factory.CreateDbContextAsync().ConfigureAwait(false);
 

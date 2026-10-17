@@ -1,15 +1,15 @@
 using System.Linq.Expressions;
 using Dingler.Data.Context;
-using Dingler.Data.Entities.GameData;
+using Dingler.Data.Entities.HexGame;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dingler.Data.Repositories;
 
 public class TournamentRepository
 {
-    private IDbContextFactory<GameDataContext> _dbContextFactory;
+    private readonly IDbContextFactory<HexGameContext> _dbContextFactory;
 
-    public TournamentRepository(IDbContextFactory<GameDataContext> dbContextFactory)
+    public TournamentRepository(IDbContextFactory<HexGameContext> dbContextFactory)
     {
         _dbContextFactory = dbContextFactory;
     }
@@ -34,7 +34,7 @@ public class TournamentRepository
             .ToListAsync(token);
     }
 
-    public async Task<T?> GetTournamentAsync<T>(Expression<Func<Tournament, T>> selector, int id)
+    public async Task<T?> GetTournamentAsync<T>(Expression<Func<Tournament, T>> selector, ulong id)
     {
         var context = await _dbContextFactory.CreateDbContextAsync();
         

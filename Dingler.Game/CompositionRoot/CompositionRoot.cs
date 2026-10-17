@@ -75,12 +75,21 @@ namespace Dingler.Game.CompositionRoot
                         var handler = new HttpClientHandler();
                         return handler;
                     });
-                var connectionString =
+                var PlayerDataConnectionString =
                     SqliteConnection.ResolveDataSource(hb.Configuration.GetConnectionString("GameData"));
-                SqliteConnection.EnsureDirectoryExists(connectionString);
+                SqliteConnection.EnsureDirectoryExists(PlayerDataConnectionString);
+
+                var adminConnectionString =
+                    SqliteConnection.ResolveDataSource(hb.Configuration.GetConnectionString("Admin"));
+                SqliteConnection.EnsureDirectoryExists(adminConnectionString);
+                
+                var gameConnectionString = SqliteConnection.ResolveDataSource(hb.Configuration.GetConnectionString("hexGame"));
+                SqliteConnection.EnsureDirectoryExists(gameConnectionString);
 
                 sc
-                    .AddSqliteDbContext<GameDataContext>(connectionString)
+                    .AddSqliteDbContext<HexGameContext>(gameConnectionString)
+                    .AddSqliteDbContext<AdminContext>(adminConnectionString)
+                    .AddSqliteDbContext<PlayerDataContext>(PlayerDataConnectionString)
                     .AddScopedAsyncStartupService<TournamentManager>()
                     .AddScopedAsyncStartupService<SessionService>()
                     .AddScoped<ChatManager>()
